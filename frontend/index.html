@@ -720,8 +720,23 @@ const DEFAULT_PLAN = [
   {day:'СБ',type:'run',icon:'🏃',label:'Темповый бег',color:'var(--orange)',detail:'8–12 км · 5:10–5:30 мин/км'},
 ];
 let USER_PLAN = JSON.parse(localStorage.getItem('user_plan')||'null') || DEFAULT_PLAN;
-let RACE_DATE = localStorage.getItem('race_date') || '2026-04-26';
-let RACE_NAME = localStorage.getItem('race_name') || 'Полумарафон 21 км — 26 апреля';
+let RACE_DATE = '2026-04-26';
+let RACE_NAME = 'Полумарафон 21 км — 26 апреля';
+
+async function loadRaceFromDB(){
+  try {
+    const plan = await get('/api/workouts/plan');
+    if(plan && plan.race_date){ 
+      RACE_DATE = plan.race_date;
+      RACE_NAME = plan.race_name || (RACE_NAME);
+    } else {
+      // fallback to goals
+      const profile = await get('/api/auth/profile');
+      if(profile?.goals?.race_date) RACE_DATE = profile.goals.race_date;
+      if(profile?.goals?.race_name) RACE_NAME = profile.goals.race_name;
+    }
+  } catch(e){}
+}
 
 const GYM_A=[{name:'Жим лёжа',sets:'4×8'},{name:'Тяга штанги',sets:'4×8'},{name:'Приседания',sets:'3×10'},{name:'Планка',sets:'3×60с'},{name:'Подтягивания',sets:'3×max'}];
 const GYM_B=[{name:'Жим плечами',sets:'4×10'},{name:'Румынская тяга',sets:'4×10'},{name:'Выпады',sets:'3×12'},{name:'Скручивания',sets:'3×20'},{name:'Тяга к поясу',sets:'3×12'}];
@@ -762,6 +777,8 @@ function showAuth(){
 
 function showApp(){
   applyTranslations();
+  // Load race goal from DB (cross-device sync)
+  loadRaceFromDB().then(() => { renderPlan(); });
   document.getElementById('auth-screen').style.display='none';
   document.getElementById('app').style.display='block';
   loadToday();
@@ -1152,6 +1169,9 @@ function savePlan(){
   localStorage.setItem('user_plan',JSON.stringify(USER_PLAN));
   localStorage.setItem('race_date',RACE_DATE);
   localStorage.setItem('race_name',RACE_NAME);
+  // Save to DB
+  try { await post('/api/auth/profile', {race_date: RACE_DATE, race_name: RACE_NAME}); } catch(e){}
+  try { await post('/api/workouts/save-plan', {plan: USER_PLAN, race_date: RACE_DATE, race_name: RACE_NAME}); } catch(e){}
   closeModal('plan-edit-modal');
   renderPlan();
   loadToday();
@@ -2188,14 +2208,18 @@ function renderGoalScreen(){
   if(!el) return;
 
   const raceDate = new Date(RACE_DATE);
-  const today = new Date();
+  const today = new Date(); today.setHours(0,0,0,0);
   const daysLeft = Math.ceil((raceDate - today) / 86400000);
-  const totalDays = 180; // approx training period
-  const progress = Math.max(0, Math.min(100, Math.round((1 - daysLeft/totalDays)*100)));
 
-  // Current week number
-  const weekMs = today - (raceDate - totalDays*86400000);
-  const currentWeekIdx = Math.max(0, Math.floor(weekMs / (7*86400000)));
+  // Dynamic: base training period on actual plan weeks
+  const totalWeeks = RUN_PLAN.length || 7;
+  const totalDays = totalWeeks * 7;
+  const trainStart = new Date(raceDate.getTime() - totalDays * 86400000);
+  const daysIntoTraining = Math.floor((today - trainStart) / 86400000);
+  const progress = Math.max(0, Math.min(100, Math.round(daysIntoTraining / totalDays * 100)));
+
+  // Current week index (0-based from training start)
+  const currentWeekIdx = Math.max(0, Math.min(totalWeeks-1, Math.floor(daysIntoTraining / 7)));
 
   // Race countdown hero
   let html = `
@@ -2534,6 +2558,9 @@ function generatePlan(){
   localStorage.setItem('user_plan',JSON.stringify(USER_PLAN));
   localStorage.setItem('race_date',RACE_DATE);
   localStorage.setItem('race_name',RACE_NAME);
+  // Save to DB — syncs across all devices
+  try { await post('/api/auth/profile', {race_date: RACE_DATE, race_name: RACE_NAME}); } catch(e){}
+  try { await post('/api/workouts/save-plan', {plan: USER_PLAN, race_date: RACE_DATE, race_name: RACE_NAME}); } catch(e){}
 
   closeModal('setup-modal');
   renderPlan();

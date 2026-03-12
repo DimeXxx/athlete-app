@@ -130,7 +130,8 @@ def update_profile(req: dict, user=Depends(get_optional_user), db=Depends(get_db
         db.execute("UPDATE users SET name=? WHERE id=?", (req["name"], uid))
     # Update goals/preferences
     goal_keys = ["height_cm","weight_kg","age","gender","calories_target","protein_target",
-                 "steps_target","nutrition_enabled","weekly_workouts_target","max_hr_manual"]
+                 "steps_target","nutrition_enabled","weekly_workouts_target","max_hr_manual",
+                 "race_date","race_name","carbs_target","fat_target"]
     for key in goal_keys:
         if key in req:
             db.execute("""

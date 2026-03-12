@@ -1,3 +1,4 @@
+import json as _json
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 from typing import Optional
@@ -246,3 +247,33 @@ def get_training_hub(period: str = "month", user=Depends(get_optional_user), db=
         "prev_stats": prev_stats,
         "period": period
     }
+
+
+@router.get("/plan")
+def get_plan(user=Depends(get_optional_user), db=Depends(get_db)):
+    uid = get_uid(user)
+    row = db.execute(
+        "SELECT plan_json, race_date, race_name FROM user_plans WHERE user_id=? ORDER BY id DESC LIMIT 1",
+        (uid,)
+    ).fetchone()
+    if not row:
+        return {"plan": None, "race_date": None, "race_name": None}
+    return {"plan": _json.loads(row["plan_json"]) if row["plan_json"] else None,
+            "race_date": row["race_date"], "race_name": row["race_name"]}
+
+@router.post("/save-plan")
+def save_plan(req: dict, user=Depends(get_optional_user), db=Depends(get_db)):
+    uid = get_uid(user)
+    plan_json = _json.dumps(req.get("plan", []), ensure_ascii=False)
+    race_date = req.get("race_date", "")
+    race_name = req.get("race_name", "")
+    # Calculate weeks until race
+    existing = db.execute("SELECT id FROM user_plans WHERE user_id=?", (uid,)).fetchone()
+    if existing:
+        db.execute("""UPDATE user_plans SET plan_json=?, race_date=?, race_name=? WHERE user_id=?""",
+                   (plan_json, race_date, race_name, uid))
+    else:
+        db.execute("""INSERT INTO user_plans (user_id, plan_json, race_date, race_name) VALUES (?,?,?,?)""",
+                   (uid, plan_json, race_date, race_name))
+    db.commit()
+    return {"message": "Plan saved"}
