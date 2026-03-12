@@ -105,9 +105,9 @@ body{background:var(--bg);color:var(--text);font-family:var(--font-b);min-height
 .user-email{font-size:11px;color:var(--muted)}
 .logout-btn{margin-left:auto;background:none;border:1px solid var(--border);color:var(--muted);padding:6px 12px;border-radius:8px;font-family:var(--font-b);font-size:12px;cursor:pointer}
 /* PLAN EDITOR */
-.plan-day-row{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border)}
+.plan-day-row{display:flex;align-items:center;gap:8px;padding:10px 0;border-bottom:1px solid var(--border)}
 .plan-day-label{font-family:var(--font-d);font-size:16px;font-weight:800;width:36px;flex-shrink:0;color:var(--muted)}
-.plan-day-input{flex:1;background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:8px 12px;color:var(--text);font-family:var(--font-b);font-size:13px;outline:none}
+.plan-day-input{flex:1;background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:8px 12px;color:var(--text);font-family:var(--font-b);font-size:13px;outline:none;-webkit-appearance:none;appearance:none}
 .plan-day-input:focus{border-color:var(--aqua)}
 </style>
 </head>
@@ -458,17 +458,33 @@ async function loadToday(){
   const plan=USER_PLAN[DAY];
   const dayNames=['Воскресенье','Понедельник','Вторник','Среда','Четверг','Пятница','Суббота'];
   const dayShort=['ВС','ПН','ВТ','СР','ЧТ','ПТ','СБ'];
+
+  // Check if today's workout came from Garmin
+  let garminDone=false;
+  try{
+    const todayW=await get('/api/workouts/today');
+    if(todayW&&todayW.length>0){
+      // Match by garmin type
+      garminDone=todayW.some(w=>{
+        if(!plan.garminType)return false;
+        return w.type===plan.garminType||w.type===plan.type;
+      });
+      if(garminDone&&!doneWorkouts.includes(0)){doneWorkouts.push(0);localStorage.setItem('done_'+today.toDateString(),JSON.stringify(doneWorkouts));}
+    }
+  }catch(e){}
+
   let weekHtml='<div class="week-grid">';
   for(let i=0;i<7;i++){
     const d=new Date(today);d.setDate(today.getDate()-today.getDay()+i);
     const p=USER_PLAN[i];
-    const dotColors={swim:'var(--blue)',run:'var(--orange)',runlong:'var(--yellow)',gym:'var(--aqua)'};
+    const dotColors={Swimming:'var(--blue)',Running:'var(--orange)',RunLong:'var(--yellow)',Gym:'var(--aqua)',GymB:'var(--aqua)',Cycling:'var(--green)'};
     weekHtml+=`<div class="week-day ${i===DAY?'today':''}"><div class="week-day-name">${dayShort[i]}</div><div class="week-day-num">${d.getDate()}</div><div class="week-day-dot" style="background:${dotColors[p.type]||'transparent'}"></div></div>`;
   }
   weekHtml+='</div>';
-  const bgMap={swim:'rgba(59,158,255,0.15)',run:'rgba(255,107,43,0.15)',runlong:'rgba(255,212,64,0.15)',gym:'rgba(0,229,204,0.15)'};
+  const bgMap={Swimming:'rgba(59,158,255,0.15)',Running:'rgba(255,107,43,0.15)',RunLong:'rgba(255,212,64,0.15)',Gym:'rgba(0,229,204,0.15)',GymB:'rgba(0,229,204,0.15)',Cycling:'rgba(0,230,118,0.15)'};
   const done=doneWorkouts.includes(0);
-  const workoutHtml=`<div class="workout-block ${done?'done':''}" onclick="toggleDone(0)"><div class="wb-icon" style="background:${bgMap[plan.type]||'var(--bg3)'}">${plan.icon}</div><div class="wb-info"><div class="wb-name">${plan.label}</div><div class="wb-detail">${plan.detail}</div></div><div class="wb-check">${done?'✓':''}</div></div>`;
+  const garminBadge=garminDone?`<div style="font-size:10px;color:var(--green);margin-top:2px">✅ Из Garmin</div>`:'';
+  const workoutHtml=`<div class="workout-block ${done?'done':''}" onclick="toggleDone(0)"><div class="wb-icon" style="background:${bgMap[plan.type]||'var(--bg3)'}">${plan.icon}</div><div class="wb-info"><div class="wb-name">${plan.label}</div><div class="wb-detail">${plan.detail}</div>${garminBadge}</div><div class="wb-check">${done?'✓':''}</div></div>`;
   let nutHtml='';
   try{
     const nut=await get('/api/nutrition/today');
@@ -520,13 +536,34 @@ function renderRunPlan(){
 }
 
 // ===== PLAN EDITOR =====
+// Workout types matching Garmin type names
+const WORKOUT_TYPES = [
+  {type:'Swimming',    garmin:'Swimming',    icon:'🏊', label:'Плавание',       color:'var(--blue)',   detail:'Бассейн'},
+  {type:'Running',     garmin:'Running',     icon:'🏃', label:'Бег темповый',   color:'var(--orange)', detail:'Темповый бег'},
+  {type:'RunLong',     garmin:'Running',     icon:'🏃', label:'Длинный бег',    color:'var(--yellow)', detail:'Длинный бег'},
+  {type:'Gym',         garmin:'FunctionalStrengthTraining', icon:'💪', label:'Тренажёрка A', color:'var(--aqua)',   detail:'Прог. A'},
+  {type:'GymB',        garmin:'FunctionalStrengthTraining', icon:'💪', label:'Тренажёрка B', color:'var(--aqua)',   detail:'Прог. B'},
+  {type:'Cycling',     garmin:'Cycling',     icon:'🚴', label:'Велосипед',      color:'var(--green)',  detail:'Велотренировка'},
+  {type:'Walking',     garmin:'Walking',     icon:'🚶', label:'Ходьба',         color:'var(--muted)',  detail:'Прогулка'},
+  {type:'Rest',        garmin:'',            icon:'😴', label:'Отдых',          color:'var(--muted)',  detail:'День отдыха'},
+];
+
 function openPlanEditor(){
   document.getElementById('pe-race-name').value=RACE_NAME.replace(/ — .*/,'');
   document.getElementById('pe-race-date').value=RACE_DATE;
   const days=['ВС','ПН','ВТ','СР','ЧТ','ПТ','СБ'];
+  const options=WORKOUT_TYPES.map(w=>`<option value="${w.type}">${w.icon} ${w.label}</option>`).join('');
   let html='';
   USER_PLAN.forEach((p,i)=>{
-    html+=`<div class="plan-day-row"><div class="plan-day-label">${days[i]}</div><input class="plan-day-input" id="pe-day-${i}" value="${p.icon} ${p.label}" placeholder="Плавание / Бег / Зал / Отдых"></div>`;
+    // Find matching type
+    const match=WORKOUT_TYPES.find(w=>w.label===p.label||w.type===p.type)||WORKOUT_TYPES[0];
+    html+=`<div class="plan-day-row">
+      <div class="plan-day-label" style="color:var(--text)">${days[i]}</div>
+      <select class="plan-day-input" id="pe-day-${i}" style="cursor:pointer">
+        ${WORKOUT_TYPES.map(w=>`<option value="${w.type}" ${w.type===match.type?'selected':''}>${w.icon} ${w.label}</option>`).join('')}
+      </select>
+      <input class="plan-day-input" id="pe-note-${i}" style="width:110px;font-size:12px" placeholder="Детали (км, мин)" value="${p.detail||''}">
+    </div>`;
   });
   document.getElementById('plan-editor-rows').innerHTML=html;
 }
@@ -535,16 +572,11 @@ function savePlan(){
   const raceName=document.getElementById('pe-race-name').value||'Гонка';
   const raceDate=document.getElementById('pe-race-date').value||'2026-04-26';
   const days=['ВС','ПН','ВТ','СР','ЧТ','ПТ','СБ'];
-  const typeMap={плав:'swim',бассейн:'swim',бег:'run',длинный:'runlong',зал:'gym',трен:'gym',отдых:'rest'};
-  const iconMap={swim:'🏊',run:'🏃',runlong:'🏃',gym:'💪',rest:'😴'};
-  const colorMap={swim:'var(--blue)',run:'var(--orange)',runlong:'var(--yellow)',gym:'var(--aqua)',rest:'var(--muted)'};
   USER_PLAN=days.map((day,i)=>{
-    const val=document.getElementById('pe-day-'+i).value;
-    const lower=val.toLowerCase();
-    let type='swim';
-    for(const[k,v] of Object.entries(typeMap)){if(lower.includes(k)){type=v;break;}}
-    const label=val.replace(/^[^\w\s]*\s*/,'').trim()||val;
-    return {day,type,icon:iconMap[type]||'🏃',label,color:colorMap[type],detail:''};
+    const typeKey=document.getElementById('pe-day-'+i).value;
+    const detail=document.getElementById('pe-note-'+i).value;
+    const wt=WORKOUT_TYPES.find(w=>w.type===typeKey)||WORKOUT_TYPES[0];
+    return {day, type:wt.type, garminType:wt.garmin, icon:wt.icon, label:wt.label, color:wt.color, detail};
   });
   RACE_DATE=raceDate;
   RACE_NAME=raceName+' — '+new Date(raceDate).toLocaleDateString('ru',{day:'numeric',month:'long'});
