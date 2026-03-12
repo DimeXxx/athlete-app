@@ -527,9 +527,6 @@ function toggleTheme(){
     </div>
   </div>
   <div id="tab-garmin" style="display:none">
-  <div class="card" id="strava-status-card">
-    <div style="text-align:center;color:var(--muted2);padding:20px">Загрузка Strava...</div>
-  </div>
     <div class="card">
       <div class="card-title">Garmin Connect</div>
       <div style="display:flex;align-items:center;gap:10px;padding:12px 0 16px">
@@ -593,7 +590,9 @@ function toggleTheme(){
 
 <!-- STRAVA TAB (inside stats screen) -->
 <div id="tab-strava" style="display:none">
-  <div id="strava-tab-content"><div class="loading"><div class="spinner"></div></div></div>
+  <div class="card" id="strava-status-card">
+    <div style="text-align:center;color:var(--muted2);padding:20px">Загрузка Strava...</div>
+  </div>
 </div>
 
 <!-- TRAINING HUB SCREEN -->
@@ -1292,7 +1291,7 @@ async function loadStravaStatus(){
   try {
     const data = await get('/api/strava/status');
     const el = document.getElementById('strava-status-card');
-    if(!el) return;
+    if(!el){ console.log('strava card not found'); return; }
     if(data.connected){
       el.innerHTML = `
         <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px">
@@ -1391,7 +1390,7 @@ async function garminSync(){
 
 // ===== TABS =====
 function setTab(name){
-  ['run','swim','steps','ai','garmin','profile'].forEach(t=>document.getElementById('tab-'+t).style.display=t===name?'block':'none');
+  ['run','swim','steps','ai','garmin','strava'].forEach(t=>{const el=document.getElementById('tab-'+t);if(el)el.style.display=t===name?'block':'none';});
   document.querySelectorAll('.toggle-btn').forEach((b,i)=>b.classList.toggle('active',['run','swim','steps','ai','garmin','profile'][i]===name));
   if(name==='swim')loadSwimStats();
   if(name==='run'){loadRunStats();loadHistory();}
