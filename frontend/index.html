@@ -914,8 +914,8 @@ async function garminSync(){
 
 // ===== TABS =====
 function setTab(name){
-  ['run','steps','swim','ai','garmin','profile'].forEach(t=>document.getElementById('tab-'+t).style.display=t===name?'block':'none');
-  document.querySelectorAll('.toggle-btn').forEach((b,i)=>b.classList.toggle('active',['run','steps','swim','ai','garmin','profile'][i]===name));
+  ['run','swim','steps','ai','garmin','profile'].forEach(t=>document.getElementById('tab-'+t).style.display=t===name?'block':'none');
+  document.querySelectorAll('.toggle-btn').forEach((b,i)=>b.classList.toggle('active',['run','swim','steps','ai','garmin','profile'][i]===name));
   if(name==='swim')loadSwimStats();
   if(name==='run'){loadRunStats();renderRunPlan();loadHistory();}
   if(name==='profile')renderProfile();
