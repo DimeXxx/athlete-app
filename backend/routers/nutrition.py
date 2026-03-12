@@ -18,6 +18,19 @@ class MealCreate(BaseModel):
 def get_uid(user):
     return user["id"] if user else 0  # 0 = guest, no real data  # fallback for demo
 
+@router.get("/date/{date_str}")
+def get_by_date(date_str: str, user=Depends(get_optional_user), db=Depends(get_db)):
+    uid = get_uid(user)
+    meals = db.execute(
+        "SELECT * FROM nutrition WHERE user_id=? AND date=? ORDER BY id", (uid, date_str)
+    ).fetchall()
+    totals = db.execute(
+        "SELECT ROUND(SUM(calories)) as calories, ROUND(SUM(protein_g),1) as protein_g,"
+        "ROUND(SUM(carbs_g),1) as carbs_g, ROUND(SUM(fat_g),1) as fat_g "
+        "FROM nutrition WHERE user_id=? AND date=?", (uid, date_str)
+    ).fetchone()
+    return {"meals": [dict(m) for m in meals], "totals": dict(totals) if totals else {}}
+
 @router.get("/today")
 def get_today_nutrition(user=Depends(get_optional_user), db=Depends(get_db)):
     uid = get_uid(user)
