@@ -1,0 +1,12 @@
+__pycache__/
+*.py[cod]
+*.db
+*.sqlite
+garmin_session.json
+.env
+venv/
+.venv/
+*.egg-info/
+dist/
+build/
+.DS_Store
