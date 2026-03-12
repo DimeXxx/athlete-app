@@ -2,27 +2,29 @@ from fastapi import APIRouter, Depends, HTTPException
 from database import get_db
 from routers.auth import get_optional_user
 from datetime import date, timedelta
-import httpx, os, json
+import os, json, requests
 
 router = APIRouter()
 
 ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "")
 
-async def call_claude(prompt: str) -> str:
+def call_claude(prompt: str) -> str:
     if not ANTHROPIC_API_KEY:
-        return "AI-анализ недоступен: не задан ANTHROPIC_API_KEY"
-    async with httpx.AsyncClient(timeout=30) as client:
-        r = await client.post(
-            "https://api.anthropic.com/v1/messages",
-            headers={"x-api-key": ANTHROPIC_API_KEY, "anthropic-version": "2023-06-01", "content-type": "application/json"},
-            json={"model": "claude-haiku-4-5-20251001", "max_tokens": 600,
-                  "messages": [{"role": "user", "content": prompt}]}
-        )
-        data = r.json()
-        return data["content"][0]["text"]
+        return "💡 AI-анализ недоступен. Добавь ANTHROPIC_API_KEY в переменные Railway."
+    r = requests.post(
+        "https://api.anthropic.com/v1/messages",
+        headers={"x-api-key": ANTHROPIC_API_KEY, "anthropic-version": "2023-06-01", "content-type": "application/json"},
+        json={"model": "claude-haiku-4-5-20251001", "max_tokens": 600,
+              "messages": [{"role": "user", "content": prompt}]},
+        timeout=30
+    )
+    data = r.json()
+    if "content" not in data:
+        raise Exception(data.get("error", {}).get("message", "API error"))
+    return data["content"][0]["text"]
 
 @router.get("/weekly")
-async def weekly_analysis(user=Depends(get_optional_user), db=Depends(get_db)):
+def weekly_analysis(user=Depends(get_optional_user), db=Depends(get_db)):
     uid = user["id"] if user else 1
     today = date.today()
     week_ago = today - timedelta(days=7)
@@ -75,20 +77,19 @@ async def weekly_analysis(user=Depends(get_optional_user), db=Depends(get_db)):
 Будь конкретным, используй цифры из данных. Максимум 300 слов."""
 
     try:
-        analysis = await call_claude(prompt)
+        analysis = call_claude(prompt)
         return {"analysis": analysis, "period": f"{week_ago} — {today}", "workouts_count": len(workouts)}
     except Exception as e:
         raise HTTPException(500, str(e))
 
 @router.get("/workout/{workout_id}")
-async def analyze_workout(workout_id: int, user=Depends(get_optional_user), db=Depends(get_db)):
+def analyze_workout(workout_id: int, user=Depends(get_optional_user), db=Depends(get_db)):
     uid = user["id"] if user else 1
     w = db.execute("SELECT * FROM workouts WHERE id=? AND user_id=?", (workout_id, uid)).fetchone()
     if not w:
         raise HTTPException(404, "Workout not found")
     w = dict(w)
 
-    # get last 5 same type for comparison
     prev = db.execute("""
         SELECT AVG(distance_km) as avg_dist, AVG(duration_min) as avg_dur, AVG(avg_hr) as avg_hr
         FROM workouts WHERE user_id=? AND type=? AND id!=? AND distance_km > 0
@@ -100,23 +101,14 @@ async def analyze_workout(workout_id: int, user=Depends(get_optional_user), db=D
 
     prompt = f"""Коротко проанализируй тренировку спортсмена на русском языке (максимум 150 слов).
 
-ТРЕНИРОВКА:
-Тип: {w['type']}
-Дата: {w['date']}
-Дистанция: {w.get('distance_km', 0)} км
-Время: {w.get('duration_min', 0)} мин
-{"Темп: " + str(pace) + " мин/км" if pace else ""}
-Средний пульс: {w.get('avg_hr', '—')} уд/мин
+ТРЕНИРОВКА: {w['type']}, {w['date']}, {w.get('distance_km',0)}км, {w.get('duration_min',0)}мин, {"темп "+str(pace)+" мин/км, " if pace else ""}пульс {w.get('avg_hr','—')}
 
-СРЕДНЕЕ ПО ПРЕДЫДУЩИМ {w['type']} ТРЕНИРОВКАМ:
-Дистанция: {round(p.get('avg_dist') or 0, 1)} км
-Время: {round(p.get('avg_dur') or 0, 1)} мин
-Пульс: {round(p.get('avg_hr') or 0)} уд/мин
+СРЕДНЕЕ ПО ПРЕДЫДУЩИМ: дистанция {round(p.get('avg_dist') or 0,1)}км, время {round(p.get('avg_dur') or 0,1)}мин, пульс {round(p.get('avg_hr') or 0)}
 
 Дай: 1 похвалу, 1 наблюдение, 1 совет. Используй эмодзи."""
 
     try:
-        analysis = await call_claude(prompt)
+        analysis = call_claude(prompt)
         return {"analysis": analysis, "workout": w}
     except Exception as e:
         raise HTTPException(500, str(e))
