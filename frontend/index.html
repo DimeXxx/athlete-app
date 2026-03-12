@@ -437,6 +437,11 @@ body::after{content:'';position:fixed;bottom:0;left:-80px;width:300px;height:300
   <button class="nav-btn" onclick="switchScreen('stats')" id="nav-stats"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>Прогресс</button>
 </nav>
 
+<!-- AI TRAINER SCREEN -->
+<div class="screen" id="screen-ai">
+  <div id="ai-screen-content"><div class="loading"><div class="spinner"></div></div></div>
+</div>
+
 <!-- GOAL PLAN SCREEN -->
 <div class="screen" id="screen-goal">
   <div id="goal-screen-content"><div class="loading"><div class="spinner"></div></div></div>
@@ -677,6 +682,7 @@ function switchScreen(name){
   if(name==='stats'){loadSwimStats();renderRunPlan();}
   if(name==='dash')loadDashboard();
   if(name==='goal')renderGoalScreen();
+  if(name==='ai')renderAIScreen();
 }
 
 // ===== TODAY =====
@@ -1519,6 +1525,154 @@ function toast(msg,isErr=false){
   const t=document.getElementById('toast');
   t.textContent=msg;t.className='toast'+(isErr?' error':'');
   t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2800);
+}
+
+// ===== AI TRAINER SCREEN =====
+let aiChatHistory = [];
+let aiAnalysisCache = null;
+
+async function renderAIScreen(){
+  const el = document.getElementById('ai-screen-content');
+
+  el.innerHTML = `
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
+    <div style="font-size:32px;font-weight:800;letter-spacing:-1px">AI-тренер</div>
+    <div style="font-size:24px">🤖</div>
+  </div>
+  <div style="font-size:13px;color:var(--muted2);margin-bottom:20px">Персональный анализ и советы</div>
+
+  <!-- Daily tip card -->
+  <div style="background:linear-gradient(135deg,rgba(184,255,61,0.07),rgba(0,229,204,0.04));border:1px solid rgba(184,255,61,0.18);border-radius:22px;padding:18px;margin-bottom:12px">
+    <div style="font-size:10px;font-weight:600;letter-spacing:2.5px;text-transform:uppercase;color:var(--green);margin-bottom:8px">💡 Совет на сегодня</div>
+    <div id="ai-screen-tip" style="font-size:14px;line-height:1.6;color:var(--text)">
+      <div class="loading"><div class="spinner"></div></div>
+    </div>
+  </div>
+
+  <!-- Weekly analysis -->
+  <div style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:22px;padding:18px;margin-bottom:12px">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
+      <div style="font-size:10px;font-weight:600;letter-spacing:2.5px;text-transform:uppercase;color:var(--muted2)">📊 Анализ недели</div>
+    </div>
+    <div id="ai-weekly-result" style="font-size:14px;line-height:1.7;color:var(--muted2)">Нажми кнопку для анализа последних 7 дней</div>
+    <button id="ai-weekly-btn" onclick="loadWeeklyAnalysis()" style="width:100%;margin-top:14px;padding:14px;border-radius:14px;background:linear-gradient(135deg,var(--green),var(--teal));border:none;color:#060a0e;font-size:15px;font-weight:700;cursor:pointer">
+      Получить анализ недели
+    </button>
+  </div>
+
+  <!-- AI Chat -->
+  <div style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:22px;padding:18px;margin-bottom:12px">
+    <div style="font-size:10px;font-weight:600;letter-spacing:2.5px;text-transform:uppercase;color:var(--muted2);margin-bottom:14px">💬 Спроси тренера</div>
+    <div id="ai-chat-messages" style="min-height:60px;max-height:320px;overflow-y:auto;margin-bottom:12px;display:flex;flex-direction:column;gap:8px">
+      <div style="background:rgba(184,255,61,0.06);border-radius:14px 14px 14px 4px;padding:12px 14px;max-width:85%">
+        <div style="font-size:13px;line-height:1.5">Привет! Я твой AI-тренер. Спроси меня о тренировках, питании, восстановлении или стратегии подготовки к гонке 🏃</div>
+      </div>
+    </div>
+    <div style="display:flex;gap:8px;align-items:flex-end">
+      <textarea id="ai-chat-input" placeholder="Например: как восстановиться после длинного бега?" rows="2"
+        style="flex:1;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:14px;padding:11px 14px;color:var(--text);font-family:var(--font);font-size:14px;outline:none;resize:none;line-height:1.4"
+        onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendAIMessage()}"
+      ></textarea>
+      <button onclick="sendAIMessage()" style="width:44px;height:44px;border-radius:12px;background:var(--green);border:none;color:#060a0e;font-size:20px;cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center">↑</button>
+    </div>
+    <!-- Quick questions -->
+    <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:10px" id="ai-quick-btns">
+      ${['💤 Как улучшить сон?','🦵 Болит колено','⚡ Темп на гонке','🥗 Питание до старта','📈 Пиковая неделя'].map(q=>
+        `<button onclick="quickAsk('${q}')" style="padding:6px 11px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.09);border-radius:20px;color:var(--muted2);font-size:11px;font-weight:500;cursor:pointer">${q}</button>`
+      ).join('')}
+    </div>
+  </div>`;
+
+  // Load daily tip async
+  try {
+    const tipData = await get('/api/ai/daily-tip');
+    const tipEl = document.getElementById('ai-screen-tip');
+    if(tipEl && tipData.tip) tipEl.textContent = tipData.tip;
+  } catch(e) {
+    const tipEl = document.getElementById('ai-screen-tip');
+    if(tipEl) tipEl.textContent = 'Тренируйся по плану и следи за питанием.';
+  }
+}
+
+async function loadWeeklyAnalysis(){
+  const btn = document.getElementById('ai-weekly-btn');
+  const res = document.getElementById('ai-weekly-result');
+  btn.disabled = true;
+  btn.textContent = '⏳ Анализирую...';
+  res.innerHTML = '<div class="loading"><div class="spinner"></div></div>';
+  try {
+    const data = await get('/api/ai/weekly');
+    res.innerHTML = `<div style="color:var(--text);line-height:1.7">${data.analysis.replace(/\n/g,'<br>')}</div>`;
+    btn.textContent = '🔄 Обновить анализ';
+  } catch(e) {
+    res.innerHTML = `<div style="color:var(--red)">${e.message}</div>`;
+    btn.textContent = 'Попробовать снова';
+  }
+  btn.disabled = false;
+}
+
+function quickAsk(q){
+  document.getElementById('ai-chat-input').value = q.replace(/^[^ ]+ /,'');
+  sendAIMessage();
+}
+
+async function sendAIMessage(){
+  const input = document.getElementById('ai-chat-input');
+  const messages = document.getElementById('ai-chat-messages');
+  const text = input.value.trim();
+  if(!text) return;
+  input.value = '';
+
+  // Hide quick buttons after first message
+  const qb = document.getElementById('ai-quick-btns');
+  if(qb) qb.style.display = 'none';
+
+  // Add user bubble
+  messages.innerHTML += `<div style="align-self:flex-end;background:rgba(184,255,61,0.1);border:1px solid rgba(184,255,61,0.2);border-radius:14px 14px 4px 14px;padding:10px 13px;max-width:85%;font-size:13px;line-height:1.5">${text}</div>`;
+  messages.scrollTop = messages.scrollHeight;
+
+  // Typing indicator
+  const typingId = 'typing-' + Date.now();
+  messages.innerHTML += `<div id="${typingId}" style="background:rgba(255,255,255,0.04);border-radius:14px 14px 14px 4px;padding:10px 14px;max-width:60%">
+    <div style="display:flex;gap:4px;align-items:center;height:18px">
+      <div style="width:6px;height:6px;border-radius:50%;background:var(--muted2);animation:pulse 1.2s ease infinite"></div>
+      <div style="width:6px;height:6px;border-radius:50%;background:var(--muted2);animation:pulse 1.2s ease .2s infinite"></div>
+      <div style="width:6px;height:6px;border-radius:50%;background:var(--muted2);animation:pulse 1.2s ease .4s infinite"></div>
+    </div>
+  </div>`;
+  messages.scrollTop = messages.scrollHeight;
+
+  aiChatHistory.push({role:'user', content: text});
+
+  try {
+    // Get user context for chat
+    let ctx = '';
+    try {
+      const cc = await get('/api/ai/command-center');
+      ctx = `Данные спортсмена: сон ${cc.sleep_h||'?'}ч, HRV ${cc.hrv||'?'}, ЧСС покоя ${cc.rhr||'?'}, вес ${cc.weight||'?'}кг, белок сегодня ${cc.nutrition?.prot||0}г/${cc.prot_goal}г. Цель: ${RACE_NAME}.`;
+    } catch(e){}
+
+    const resp = await fetch('https://api.anthropic.com/v1/messages', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({
+        model:'claude-sonnet-4-20250514',
+        max_tokens:400,
+        system:`Ты персональный AI-тренер для бегуна. Отвечай на русском языке. Коротко и конкретно (2-4 предложения). ${ctx}`,
+        messages: aiChatHistory
+      })
+    });
+    const data = await resp.json();
+    const reply = data.content?.[0]?.text || 'Нет ответа';
+    aiChatHistory.push({role:'assistant', content: reply});
+
+    document.getElementById(typingId)?.remove();
+    messages.innerHTML += `<div style="background:rgba(255,255,255,0.04);border-radius:14px 14px 14px 4px;padding:10px 14px;max-width:88%;font-size:13px;line-height:1.6">${reply.replace(/\n/g,'<br>')}</div>`;
+    messages.scrollTop = messages.scrollHeight;
+  } catch(e) {
+    document.getElementById(typingId)?.remove();
+    messages.innerHTML += `<div style="background:rgba(255,68,85,0.08);border-radius:14px;padding:10px 14px;font-size:13px;color:var(--red)">Ошибка: ${e.message}</div>`;
+  }
 }
 
 // ===== GOAL PLAN SCREEN =====
