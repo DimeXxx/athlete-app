@@ -7,7 +7,7 @@ import requests, json, os
 router = APIRouter()
 
 def get_uid(user):
-    return user["id"] if user else 1
+    return user["id"] if user else 0  # 0 = guest, no real data
 
 def compute_today_score(sleep_h, hrv, rhr, fatigue_pct):
     """Compute 0-100 readiness score"""

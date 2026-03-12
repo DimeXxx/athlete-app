@@ -16,7 +16,7 @@ class MealCreate(BaseModel):
     fat_g: float = 0
 
 def get_uid(user):
-    return user["id"] if user else 1  # fallback for demo
+    return user["id"] if user else 0  # 0 = guest, no real data  # fallback for demo
 
 @router.get("/today")
 def get_today_nutrition(user=Depends(get_optional_user), db=Depends(get_db)):

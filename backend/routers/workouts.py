@@ -17,7 +17,7 @@ class WorkoutCreate(BaseModel):
     notes: Optional[str] = None
 
 def get_uid(user):
-    return user["id"] if user else 1
+    return user["id"] if user else 0  # 0 = guest, no real data
 
 def get_date_range(period: str):
     today = date.today()

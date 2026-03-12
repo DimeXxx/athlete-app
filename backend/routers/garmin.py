@@ -13,7 +13,7 @@ class GarminCredentials(BaseModel):
     password: str
 
 def get_uid(user):
-    return user["id"] if user else 1
+    return user["id"] if user else 0  # 0 = guest, no real data
 
 # Simple reversible encoding (not crypto, but hides plain text)
 def encode_pwd(pwd: str) -> str:

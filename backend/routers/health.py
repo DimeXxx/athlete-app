@@ -17,7 +17,7 @@ class HealthMetric(BaseModel):
     hrv: Optional[int] = None
 
 def get_uid(user):
-    return user["id"] if user else 1
+    return user["id"] if user else 0  # 0 = guest, no real data
 
 def steps_to_calories(steps: int, weight_kg: float = 70) -> int:
     """Estimate calories burned from steps"""

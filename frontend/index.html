@@ -186,7 +186,7 @@ body::after{content:'';position:fixed;bottom:0;left:-80px;width:300px;height:300
       <button class="btn-primary" onclick="doRegister()">СОЗДАТЬ АККАУНТ</button>
     </div>
     <div style="text-align:center;margin-top:16px">
-      <button onclick="continueAsGuest()" style="background:none;border:none;color:var(--muted);font-size:13px;cursor:pointer;text-decoration:underline">Продолжить без аккаунта</button>
+      <!-- guest mode disabled for data privacy -->
     </div>
   </div>
 </div>
@@ -641,8 +641,10 @@ async function doRegister(){
 }
 
 function continueAsGuest(){
-  TOKEN=null; CURRENT_USER={name:'Гость',email:''};
-  showApp();
+  // Show register tab with friendly message
+  authTab('register');
+  const sub = document.querySelector('.auth-sub');
+  if(sub) sub.textContent = 'Создай аккаунт — это бесплатно и займёт 30 секунд 👟';
 }
 
 function doLogout(){
