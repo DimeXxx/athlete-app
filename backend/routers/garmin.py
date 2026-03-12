@@ -74,37 +74,46 @@ TYPE_MAP = {
 def sync_health_metrics(uid: int, client, days: int, db):
     """Sync sleep, HRV, weight, resting HR from Garmin daily summaries"""
     end_date = date.today()
-    start_date = end_date - timedelta(days=min(days, 30))  # health metrics: last 30 days
+    start_date = end_date - timedelta(days=min(days, 30))
     synced = 0
     check_date = start_date
     while check_date <= end_date:
         date_str = check_date.isoformat()
         try:
-            summary = client.get_user_summary(date_str)
-            if not summary:
-                check_date += timedelta(days=1)
-                continue
+            # --- Summary: steps, resting HR ---
+            resting_hr = None
+            steps = None
+            try:
+                summary = client.get_user_summary(date_str)
+                if summary:
+                    resting_hr = summary.get("restingHeartRate")
+                    steps = summary.get("totalSteps")
+            except Exception:
+                pass
 
+            # --- Sleep: from get_sleep_data ---
             sleep_h = None
-            if summary.get("sleepingSeconds"):
-                sleep_h = round(summary["sleepingSeconds"] / 3600, 1)
-            elif summary.get("sleepTimeSeconds"):
-                sleep_h = round(summary["sleepTimeSeconds"] / 3600, 1)
+            try:
+                sleep_data = client.get_sleep_data(date_str)
+                dto = sleep_data.get("dailySleepDTO", {}) if sleep_data else {}
+                secs = dto.get("sleepTimeSeconds") or dto.get("sleepingSeconds")
+                if secs and secs > 0:
+                    sleep_h = round(secs / 3600, 1)
+            except Exception:
+                pass
 
-            resting_hr = summary.get("restingHeartRate")
-            steps      = summary.get("totalSteps")
-            weight_kg  = None  # will try body composition below
-
-            # HRV — from HRV summary if available
+            # --- HRV: lastNightAvg preferred, fallback weeklyAvg ---
             hrv = None
             try:
                 hrv_data = client.get_hrv_data(date_str)
                 if hrv_data and hrv_data.get("hrvSummary"):
-                    hrv = hrv_data["hrvSummary"].get("lastNight") or hrv_data["hrvSummary"].get("weeklyAvg")
+                    s = hrv_data["hrvSummary"]
+                    hrv = s.get("lastNightAvg") or s.get("weeklyAvg") or s.get("lastNight5MinHigh")
             except Exception:
                 pass
 
-            # Weight from body composition
+            # --- Weight from body composition ---
+            weight_kg = None
             try:
                 bc = client.get_body_composition(date_str, date_str)
                 if bc and bc.get("dateWeightList"):
@@ -113,17 +122,16 @@ def sync_health_metrics(uid: int, client, days: int, db):
             except Exception:
                 pass
 
-            # Only update if we have at least something useful
             if any(v is not None for v in [sleep_h, resting_hr, hrv, weight_kg, steps]):
                 db.execute("""
                     INSERT INTO health_metrics (user_id, date, steps, resting_hr, sleep_hours, weight_kg, hrv)
                     VALUES (?,?,?,?,?,?,?)
                     ON CONFLICT(user_id, date) DO UPDATE SET
-                      steps      = COALESCE(excluded.steps, steps),
-                      resting_hr = COALESCE(excluded.resting_hr, resting_hr),
-                      sleep_hours= COALESCE(excluded.sleep_hours, sleep_hours),
-                      weight_kg  = COALESCE(excluded.weight_kg, weight_kg),
-                      hrv        = COALESCE(excluded.hrv, hrv)
+                      steps       = COALESCE(excluded.steps, steps),
+                      resting_hr  = COALESCE(excluded.resting_hr, resting_hr),
+                      sleep_hours = COALESCE(excluded.sleep_hours, sleep_hours),
+                      weight_kg   = COALESCE(excluded.weight_kg, weight_kg),
+                      hrv         = COALESCE(excluded.hrv, hrv)
                 """, (uid, date_str, steps, resting_hr, sleep_h, weight_kg, hrv))
                 db.commit()
                 synced += 1
