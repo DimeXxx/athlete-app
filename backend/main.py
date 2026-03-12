@@ -5,7 +5,7 @@ from fastapi.responses import FileResponse
 from contextlib import asynccontextmanager
 import uvicorn, sqlite3, logging
 from database import init_db, DB_PATH, get_db
-from routers import workouts, nutrition, garmin, health, auth, ai
+from routers import workouts, nutrition, garmin, health, auth, ai, strava, strava
 from routers.garmin import do_sync, load_garmin_creds, ensure_garmin_table, decode_pwd
 
 logger = logging.getLogger(__name__)
@@ -54,6 +54,8 @@ app.add_middleware(
 )
 
 app.include_router(auth.router, prefix="/api/auth", tags=["auth"])
+app.include_router(strava.router, prefix="/api/strava", tags=["strava"])
+app.include_router(strava.router, prefix="/api/strava", tags=["strava"])
 
 @app.get("/admin")
 def admin_panel():
