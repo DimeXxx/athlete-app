@@ -54,6 +54,13 @@ app.add_middleware(
 )
 
 app.include_router(auth.router, prefix="/api/auth", tags=["auth"])
+
+@app.get("/admin")
+def admin_panel():
+    from fastapi.responses import FileResponse
+    import os
+    admin_file = os.path.join(os.path.dirname(__file__), "../frontend/admin.html")
+    return FileResponse(admin_file)
 app.include_router(ai.router, prefix="/api/ai", tags=["ai"])
 app.include_router(workouts.router, prefix="/api/workouts", tags=["workouts"])
 app.include_router(nutrition.router, prefix="/api/nutrition", tags=["nutrition"])

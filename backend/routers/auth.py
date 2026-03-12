@@ -177,3 +177,52 @@ def admin_stats(secret: str = "", db=Depends(get_db)):
         },
         "users": [dict(u) for u in users]
     }
+
+
+@router.get("/admin/user/{user_id}")
+def admin_user_detail(user_id: int, secret: str = "", db=Depends(get_db)):
+    import os
+    if secret != os.environ.get("ADMIN_SECRET", "smartfit2026"):
+        raise HTTPException(403, "Forbidden")
+    user = db.execute("SELECT id,name,email,created_at FROM users WHERE id=?", (user_id,)).fetchone()
+    if not user: raise HTTPException(404, "User not found")
+    workouts = db.execute("""
+        SELECT date,type,distance_km,duration_min,calories,avg_hr,source
+        FROM workouts WHERE user_id=? ORDER BY date DESC LIMIT 20
+    """, (user_id,)).fetchall()
+    goals = {r["key"]:r["value"] for r in
+             db.execute("SELECT key,value FROM goals WHERE user_id=?", (user_id,)).fetchall()}
+    health = db.execute("""
+        SELECT date,steps,resting_hr,sleep_hours,weight_kg,hrv
+        FROM health_metrics WHERE user_id=? ORDER BY date DESC LIMIT 7
+    """, (user_id,)).fetchall()
+    return {
+        "user": dict(user), "goals": goals,
+        "recent_workouts": [dict(w) for w in workouts],
+        "recent_health": [dict(h) for h in health],
+    }
+
+@router.delete("/admin/user/{user_id}")
+def admin_delete_user(user_id: int, secret: str = "", db=Depends(get_db)):
+    import os
+    if secret != os.environ.get("ADMIN_SECRET", "smartfit2026"):
+        raise HTTPException(403, "Forbidden")
+    for table in ["workouts","nutrition","health_metrics","goals","user_plans","garmin_accounts"]:
+        db.execute(f"DELETE FROM {table} WHERE user_id=?", (user_id,))
+    db.execute("DELETE FROM users WHERE id=?", (user_id,))
+    db.commit()
+    return {"message": f"User {user_id} deleted"}
+
+@router.post("/admin/broadcast")
+def admin_broadcast(req: dict, secret: str = "", db=Depends(get_db)):
+    """Store a broadcast message shown to all users on next login"""
+    import os
+    if secret != os.environ.get("ADMIN_SECRET", "smartfit2026"):
+        raise HTTPException(403, "Forbidden")
+    msg = req.get("message","")
+    db.execute("""
+        INSERT INTO goals (user_id, key, value) VALUES (0,'broadcast',?)
+        ON CONFLICT(user_id,key) DO UPDATE SET value=excluded.value
+    """, (msg,))
+    db.commit()
+    return {"message": "Broadcast set"}
