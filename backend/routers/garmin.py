@@ -150,26 +150,102 @@ def garmin_sync(creds: Optional[GarminCredentials] = None, days: int = 0,
         days = 730 if existing == 0 else 30
 
     synced, skipped, total = do_sync(uid, email, password, days, db)
-    # Sync daily steps
+    # Sync daily steps — try multiple Garmin API methods
     steps_synced = 0
     try:
-        steps_data = client.get_steps_data(start_date.isoformat(), end_date.isoformat())
+        steps_data = None
+        # Try different method names (garminconnect API varies by version)
+        for method_name in ['get_steps_data', 'get_daily_steps', 'get_user_summary_chart']:
+            try:
+                method = getattr(client, method_name, None)
+                if method:
+                    steps_data = method(start_date.isoformat(), end_date.isoformat())
+                    if steps_data:
+                        break
+            except Exception:
+                continue
+
+        # Also try extracting steps from daily summary
+        if not steps_data:
+            try:
+                from datetime import timedelta as _td
+                cur = start_date
+                steps_data = []
+                while cur <= end_date:
+                    try:
+                        summary = client.get_user_summary(cur.isoformat())
+                        s = summary.get("totalSteps") or summary.get("steps")
+                        if s:
+                            steps_data.append({"calendarDate": cur.isoformat(), "totalSteps": s})
+                    except Exception:
+                        pass
+                    cur += _td(days=1)
+            except Exception:
+                pass
+
         for day in (steps_data or []):
             day_date = str(day.get("calendarDate", ""))[:10]
-            steps = day.get("totalSteps") or day.get("steps")
-            if day_date and steps:
+            steps = (day.get("totalSteps") or day.get("steps") or
+                     day.get("totalStep") or day.get("stepGoal"))
+            if day_date and steps and int(steps) > 0:
                 db.execute(
                     "INSERT INTO health_metrics (user_id, date, steps) VALUES (?,?,?) "
                     "ON CONFLICT(user_id, date) DO UPDATE SET steps=COALESCE(excluded.steps,steps)",
-                    (uid, day_date, steps)
+                    (uid, day_date, int(steps))
                 )
                 steps_synced += 1
-        db.commit()
+        if steps_synced:
+            db.commit()
     except Exception:
         pass
 
     return {"message": "Синхронизация завершена!", "synced": synced, "skipped": skipped,
             "total": total, "steps_synced": steps_synced}
+
+@router.post("/sync-steps")
+def sync_steps_only(creds: Optional[GarminCredentials] = None, days: int = 90,
+                    user=Depends(get_optional_user), db=Depends(get_db)):
+    ensure_garmin_table(db)
+    uid = get_uid(user)
+    if not creds or not creds.password:
+        saved = load_garmin_creds(uid, db)
+        if not saved:
+            raise HTTPException(400, "Garmin не подключён")
+        email, password = saved["email"], saved["password"]
+    else:
+        email, password = creds.email, creds.password
+
+    client = get_garmin_client(email, password)
+    end_date = date.today()
+    start_date = end_date - timedelta(days=days)
+    steps_synced = 0
+    errors = []
+
+    try:
+        from datetime import timedelta as _td
+        cur = start_date
+        while cur <= end_date:
+            try:
+                summary = client.get_user_summary(cur.isoformat())
+                steps = (summary.get("totalSteps") or summary.get("steps", 0))
+                rhr = summary.get("restingHeartRate")
+                if steps and int(steps) > 0:
+                    db.execute(
+                        "INSERT INTO health_metrics (user_id, date, steps, resting_hr) VALUES (?,?,?,?) "
+                        "ON CONFLICT(user_id, date) DO UPDATE SET "
+                        "steps=COALESCE(excluded.steps,steps),"
+                        "resting_hr=COALESCE(excluded.resting_hr,resting_hr)",
+                        (uid, cur.isoformat(), int(steps), rhr)
+                    )
+                    steps_synced += 1
+            except Exception as e:
+                errors.append(str(cur))
+            cur += _td(days=1)
+        db.commit()
+    except Exception as e:
+        raise HTTPException(500, str(e))
+
+    return {"synced_days": steps_synced, "period_days": days, "errors": len(errors)}
 
 @router.post("/auto-sync")
 def auto_sync_all(db=Depends(get_db)):

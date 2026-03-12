@@ -287,12 +287,28 @@ body{background:var(--bg);color:var(--text);font-family:var(--font-b);min-height
       <div id="steps-content"><div class="loading"><div class="spinner"></div></div></div>
     </div>
     <div class="card">
-      <div class="card-title">Добавить шаги вручную</div>
+      <div class="card-title">Синхронизировать из Garmin</div>
+      <p style="font-size:13px;color:var(--muted);margin-bottom:12px">Загружает шаги и пульс покоя за выбранный период</p>
+      <div class="input-group">
+        <label class="input-label">Период</label>
+        <select class="input-field" id="steps-sync-days">
+          <option value="30">30 дней</option>
+          <option value="90" selected>3 месяца</option>
+          <option value="180">6 месяцев</option>
+          <option value="365">Год</option>
+          <option value="730">2 года</option>
+        </select>
+      </div>
+      <button class="btn-primary" onclick="syncSteps()" id="steps-sync-btn">🔄 СИНХРОНИЗИРОВАТЬ ШАГИ</button>
+      <div id="steps-sync-result" style="margin-top:10px;font-size:13px;color:var(--muted)"></div>
+    </div>
+    <div class="card">
+      <div class="card-title">Добавить вручную</div>
       <div class="input-row">
         <div class="input-group"><label class="input-label">Дата</label><input class="input-field" id="steps-date" type="date"></div>
         <div class="input-group"><label class="input-label">Шагов</label><input class="input-field" id="steps-count" type="number" placeholder="8000"></div>
       </div>
-      <button class="btn-primary" onclick="logSteps()">ЗАПИСАТЬ</button>
+      <button class="btn-secondary" onclick="logSteps()">ЗАПИСАТЬ</button>
     </div>
   </div>
   <div id="tab-swim" style="display:none">
@@ -1041,6 +1057,27 @@ async function loadSteps(){
     }
     el.innerHTML=html;
   }catch(e){el.innerHTML='<div style="color:var(--muted);font-size:13px">Нет данных</div>';}
+}
+
+async function syncSteps(){
+  const days=document.getElementById('steps-sync-days').value;
+  const btn=document.getElementById('steps-sync-btn');
+  const result=document.getElementById('steps-sync-result');
+  btn.disabled=true;
+  btn.textContent=`Синхронизируем ${days} дней...`;
+  result.innerHTML='<div style="color:var(--muted)">⏳ Загружаем данные из Garmin... это может занять минуту</div>';
+  try{
+    const r=await post('/api/garmin/sync-steps?days='+days,{email:'',password:''});
+    toast(`✅ Шаги загружены: ${r.synced_days} дней`);
+    result.innerHTML=`<div style="color:var(--green)">✅ Загружено: ${r.synced_days} дней</div>`;
+    loadSteps();
+    loadToday();
+  }catch(e){
+    toast('Ошибка: '+e.message,true);
+    result.innerHTML='<div style="color:var(--red)">❌ '+e.message+'</div>';
+  }
+  btn.disabled=false;
+  btn.textContent='🔄 СИНХРОНИЗИРОВАТЬ ШАГИ';
 }
 
 async function logSteps(){
