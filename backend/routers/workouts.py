@@ -71,3 +71,19 @@ def delete_workout(workout_id: int, user=Depends(get_optional_user), db=Depends(
     db.execute("DELETE FROM workouts WHERE id=? AND user_id=?", (workout_id, uid))
     db.commit()
     return {"message": "Deleted"}
+
+@router.get("/run/stats")
+def get_run_stats(user=Depends(get_optional_user), db=Depends(get_db)):
+    uid = get_uid(user)
+    rows = db.execute("""
+        SELECT date, ROUND(distance_km, 2) as distance_km, duration_min,
+               ROUND(duration_min / distance_km, 1) as pace_per_km
+        FROM workouts WHERE user_id=? AND type IN ('Running','trail_running','running')
+        ORDER BY date DESC LIMIT 20
+    """, (uid,)).fetchall()
+    total = db.execute("""
+        SELECT COUNT(*) as count, ROUND(SUM(distance_km),1) as total_km,
+               ROUND(AVG(distance_km),1) as avg_km
+        FROM workouts WHERE user_id=? AND type IN ('Running','trail_running','running')
+    """, (uid,)).fetchone()
+    return {"sessions": [dict(r) for r in rows], "total": dict(total)}

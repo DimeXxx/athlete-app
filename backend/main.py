@@ -5,7 +5,7 @@ from fastapi.responses import FileResponse
 from contextlib import asynccontextmanager
 import uvicorn
 from database import init_db
-from routers import workouts, nutrition, garmin, health, auth
+from routers import workouts, nutrition, garmin, health, auth, ai
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -22,6 +22,7 @@ app.add_middleware(
 )
 
 app.include_router(auth.router, prefix="/api/auth", tags=["auth"])
+app.include_router(ai.router, prefix="/api/ai", tags=["ai"])
 app.include_router(workouts.router, prefix="/api/workouts", tags=["workouts"])
 app.include_router(nutrition.router, prefix="/api/nutrition", tags=["nutrition"])
 app.include_router(garmin.router, prefix="/api/garmin", tags=["garmin"])

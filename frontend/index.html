@@ -209,12 +209,33 @@ body{background:var(--bg);color:var(--text);font-family:var(--font-b);min-height
   <div class="screen-title">ПРОГРЕСС</div>
   <div class="screen-sub">Статистика и Garmin</div>
   <div class="toggle-row">
-    <button class="toggle-btn active" onclick="setTab('run')">Бег</button>
-    <button class="toggle-btn" onclick="setTab('swim')">Плавание</button>
+    <button class="toggle-btn active" onclick="setTab('run')">🏃 Бег</button>
+    <button class="toggle-btn" onclick="setTab('swim')">🏊 Плавание</button>
+    <button class="toggle-btn" onclick="setTab('ai')">🤖 AI</button>
     <button class="toggle-btn" onclick="setTab('garmin')">Garmin</button>
     <button class="toggle-btn" onclick="setTab('profile')">Профиль</button>
   </div>
-  <div id="tab-run"><div class="card"><div class="card-title">Подготовка к полумарафону</div><div id="run-plan"></div></div></div>
+  <div id="tab-run">
+    <div class="card"><div class="card-title">Бег — статистика Garmin</div><div id="run-stats"><div class="loading"><div class="spinner"></div></div></div></div>
+    <div class="card"><div class="card-title">Подготовка к полумарафону</div><div id="run-plan"></div></div>
+  </div>
+  <div id="tab-ai" style="display:none">
+    <div class="card" style="background:linear-gradient(135deg,rgba(59,158,255,0.08),rgba(0,229,204,0.05));border-color:rgba(59,158,255,0.2)">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
+        <div style="font-size:28px">🤖</div>
+        <div><div style="font-family:var(--font-d);font-size:20px;font-weight:900">AI-тренер</div><div style="font-size:12px;color:var(--muted)">Анализ последних 7 дней</div></div>
+      </div>
+      <button onclick="loadAI()" id="ai-btn" style="width:100%;padding:14px;background:linear-gradient(135deg,var(--aqua),var(--blue));border:none;border-radius:12px;color:#08090d;font-family:var(--font-d);font-size:16px;font-weight:900;cursor:pointer;letter-spacing:.5px">ПОЛУЧИТЬ АНАЛИЗ</button>
+    </div>
+    <div id="ai-result" style="display:none">
+      <div class="card">
+        <div class="card-title">Анализ недели</div>
+        <div id="ai-text" style="font-size:14px;line-height:1.7;color:var(--text);white-space:pre-wrap"></div>
+        <div id="ai-meta" style="margin-top:12px;font-size:11px;color:var(--muted)"></div>
+      </div>
+    </div>
+    <div id="ai-loading" style="display:none" class="loading"><div class="spinner"></div>AI анализирует твои данные...</div>
+  </div>
   <div id="tab-swim" style="display:none">
     <div class="card"><div class="card-title">Плавание — статистика</div><div id="swim-stats"><div class="loading"><div class="spinner"></div></div></div></div>
     <div class="card">
@@ -644,11 +665,46 @@ async function garminSync(){
 
 // ===== TABS =====
 function setTab(name){
-  ['run','swim','garmin','profile'].forEach(t=>document.getElementById('tab-'+t).style.display=t===name?'block':'none');
-  document.querySelectorAll('.toggle-btn').forEach((b,i)=>b.classList.toggle('active',['run','swim','garmin','profile'][i]===name));
+  ['run','swim','ai','garmin','profile'].forEach(t=>document.getElementById('tab-'+t).style.display=t===name?'block':'none');
+  document.querySelectorAll('.toggle-btn').forEach((b,i)=>b.classList.toggle('active',['run','swim','ai','garmin','profile'][i]===name));
   if(name==='swim')loadSwimStats();
-  if(name==='run')renderRunPlan();
+  if(name==='run'){loadRunStats();renderRunPlan();}
   if(name==='profile')renderProfile();
+}
+
+async function loadRunStats(){
+  document.getElementById('run-stats').innerHTML='<div class="loading"><div class="spinner"></div></div>';
+  try{
+    const data=await get('/api/workouts/run/stats');
+    const total=data.total||{};
+    let html=`<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:14px"><div style="background:var(--bg3);border-radius:10px;padding:12px;text-align:center"><div style="font-family:var(--font-d);font-size:26px;font-weight:900;color:var(--orange)">${total.count||0}</div><div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px">Пробежек</div></div><div style="background:var(--bg3);border-radius:10px;padding:12px;text-align:center"><div style="font-family:var(--font-d);font-size:26px;font-weight:900;color:var(--orange)">${total.total_km||0}</div><div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px">Км всего</div></div><div style="background:var(--bg3);border-radius:10px;padding:12px;text-align:center"><div style="font-family:var(--font-d);font-size:26px;font-weight:900;color:var(--orange)">${total.avg_km||0}</div><div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px">Средний</div></div></div>`;
+    if(data.sessions&&data.sessions.length>0){
+      data.sessions.slice(0,8).forEach(s=>{
+        const pm=s.pace_per_km||0;const pace=pm?`${Math.floor(pm)}:${String(Math.round((pm%1)*60)).padStart(2,'0')} мин/км`:'—';
+        html+=`<div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--border)"><div style="font-size:11px;color:var(--muted);width:68px;flex-shrink:0">${s.date}</div><div style="font-family:var(--font-d);font-size:22px;font-weight:900;color:var(--orange)">${s.distance_km}<span style="font-size:11px;color:var(--muted)"> км</span></div><div style="margin-left:auto;font-size:11px;color:var(--muted)">${pace}</div></div>`;
+      });
+    } else {html+='<div style="color:var(--muted);font-size:13px;padding:12px 0;text-align:center">Пробежек нет. Синхронизируй Garmin!</div>';}
+    document.getElementById('run-stats').innerHTML=html;
+  }catch(e){document.getElementById('run-stats').innerHTML='<div style="color:var(--muted);font-size:13px">Нет данных</div>';}
+}
+
+async function loadAI(){
+  document.getElementById('ai-btn').disabled=true;
+  document.getElementById('ai-btn').textContent='Анализирую...';
+  document.getElementById('ai-loading').style.display='flex';
+  document.getElementById('ai-result').style.display='none';
+  try{
+    const data=await get('/api/ai/weekly');
+    document.getElementById('ai-text').textContent=data.analysis;
+    document.getElementById('ai-meta').textContent=`Период: ${data.period} · Тренировок: ${data.workouts_count}`;
+    document.getElementById('ai-result').style.display='block';
+    document.getElementById('ai-loading').style.display='none';
+  }catch(e){
+    document.getElementById('ai-loading').style.display='none';
+    toast('Ошибка AI: '+e.message,true);
+  }
+  document.getElementById('ai-btn').disabled=false;
+  document.getElementById('ai-btn').textContent='ОБНОВИТЬ АНАЛИЗ';
 }
 
 function renderProfile(){
