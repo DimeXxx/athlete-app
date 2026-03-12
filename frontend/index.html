@@ -669,75 +669,230 @@ const DAY=today.getDay();
 let doneWorkouts=JSON.parse(localStorage.getItem('done_'+today.toDateString())||'[]');
 
 async function loadToday(){
-  const plan=USER_PLAN[DAY];
+  const el=document.getElementById('today-content');
+  el.innerHTML='<div class="loading"><div class="spinner"></div>Загрузка...</div>';
+
   const dayNames=['Воскресенье','Понедельник','Вторник','Среда','Четверг','Пятница','Суббота'];
   const dayShort=['ВС','ПН','ВТ','СР','ЧТ','ПТ','СБ'];
+  const dotColors={Swimming:'var(--blue)',Running:'var(--orange)',RunLong:'var(--yellow)',
+    Gym:'var(--teal)',GymB:'var(--teal)',Cycling:'var(--green)',Rest:'transparent'};
 
-  // Check if today's workout came from Garmin
-  let garminDone=false;
-  try{
-    const todayW=await get('/api/workouts/today');
-    if(todayW&&todayW.length>0){
-      // Match by garmin type
-      garminDone=todayW.some(w=>{
-        if(!plan.garminType)return false;
-        return w.type===plan.garminType||w.type===plan.type;
-      });
-      if(garminDone&&!doneWorkouts.includes(0)){doneWorkouts.push(0);localStorage.setItem('done_'+today.toDateString(),JSON.stringify(doneWorkouts));}
-    }
-  }catch(e){}
-
-  let weekHtml='<div class="week-grid">';
+  // Week strip
+  let weekHtml='<div class="week-grid" style="margin-bottom:14px">';
   for(let i=0;i<7;i++){
     const d=new Date(today);d.setDate(today.getDate()-today.getDay()+i);
     const p=USER_PLAN[i];
-    const dotColors={Swimming:'var(--blue)',Running:'var(--orange)',RunLong:'var(--yellow)',Gym:'var(--aqua)',GymB:'var(--aqua)',Cycling:'var(--green)'};
-    weekHtml+=`<div class="week-day ${i===DAY?'today':''}"><div class="week-day-name">${dayShort[i]}</div><div class="week-day-num">${d.getDate()}</div><div class="week-day-dot" style="background:${dotColors[p.type]||'transparent'}"></div></div>`;
+    weekHtml+=`<div class="week-day ${i===DAY?'today':''}">
+      <div class="week-day-name">${dayShort[i]}</div>
+      <div class="week-day-num">${d.getDate()}</div>
+      <div class="week-day-dot" style="background:${dotColors[p?.type]||'transparent'}"></div>
+    </div>`;
   }
   weekHtml+='</div>';
-  const bgMap={Swimming:'rgba(59,158,255,0.15)',Running:'rgba(255,107,43,0.15)',RunLong:'rgba(255,212,64,0.15)',Gym:'rgba(0,229,204,0.15)',GymB:'rgba(0,229,204,0.15)',Cycling:'rgba(0,230,118,0.15)'};
+
+  // Fetch command center data
+  let cc={};
+  try{ cc=await get('/api/ai/command-center'); }catch(e){}
+
+  const score=cc.score||0;
+  const scoreColor=score>=70?'var(--green)':score>=50?'var(--yellow)':'var(--orange)';
+  const scoreLabel=cc.score_label||'Загрузка данных';
+  const segs=Array.from({length:10},(_,i)=>`<div style="flex:1;height:4px;border-radius:2px;background:${i<Math.round(score/10)?scoreColor:'rgba(255,255,255,0.06)'}"></div>`).join('');
+
+  // Today's plan item
+  const plan=USER_PLAN[DAY]||{icon:'💪',label:'Тренировка',type:'Gym',detail:''};
   const done=doneWorkouts.includes(0);
-  const garminBadge=garminDone?`<div style="font-size:10px;color:var(--green);margin-top:2px">✅ Из Garmin</div>`:'';
-  const workoutHtml=`<div class="workout-block ${done?'done':''}" onclick="toggleDone(0)"><div class="wb-icon" style="background:${bgMap[plan.type]||'var(--bg3)'}">${plan.icon}</div><div class="wb-info"><div class="wb-name">${plan.label}</div><div class="wb-detail">${plan.detail}</div>${garminBadge}</div><div class="wb-check">${done?'✓':''}</div></div>`;
-  // Load steps
-  let stepsHtml='';
-  try{
-    const health=await get('/api/health/today');
-    const steps=health.metrics?.steps||0;
-    const stepsCal=health.metrics?.steps_calories||0;
-    const stepsGoal=parseInt(health.goals?.steps_target||10000);
-    const stepsPct=Math.min(100,Math.round(steps/stepsGoal*100));
-    const stepsColor=stepsPct>=100?'var(--green)':stepsPct>=70?'var(--yellow)':'var(--blue)';
-    stepsHtml=`<div class="card" style="margin-top:12px">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
-        <div class="card-title" style="margin-bottom:0">Шаги сегодня</div>
-        <div style="font-size:11px;color:var(--muted)">цель: ${stepsGoal.toLocaleString()}</div>
+  const bgMap={Swimming:'rgba(61,139,255,0.12)',Running:'rgba(255,107,43,0.12)',
+    RunLong:'rgba(245,200,66,0.12)',Gym:'rgba(0,229,204,0.1)',GymB:'rgba(0,229,204,0.1)',
+    Cycling:'rgba(184,255,61,0.1)',Rest:'rgba(255,255,255,0.04)'};
+
+  // Yesterday workout
+  let yesterdayHtml='';
+  if(cc.yesterday_workout){
+    const yw=cc.yesterday_workout;
+    const typeIcons={Swimming:'🏊',Running:'🏃',RunLong:'🏃',FunctionalStrengthTraining:'💪',Cycling:'🚴'};
+    const icon=typeIcons[yw.type]||'🏋️';
+    yesterdayHtml=`
+    <div class="card" style="margin-bottom:10px">
+      <div class="card-title" style="display:flex;justify-content:space-between;align-items:center">
+        <span>Вчера из Garmin</span>
+        <span style="font-size:11px;color:var(--blue);background:rgba(61,139,255,0.1);padding:2px 8px;border-radius:8px;font-weight:500">${icon} ${yw.type}</span>
       </div>
-      <div style="display:flex;align-items:center;gap:14px">
-        <div>
-          <div style="font-family:var(--font-d);font-size:40px;font-weight:900;color:${stepsColor};line-height:1">${steps.toLocaleString()}</div>
-          <div style="font-size:12px;color:var(--muted);margin-top:3px">≈ ${stepsCal} ккал</div>
-        </div>
-        <div style="flex:1">
-          <div style="background:rgba(255,255,255,0.05);border-radius:6px;height:10px;overflow:hidden">
-            <div style="width:${stepsPct}%;height:100%;background:linear-gradient(90deg,${stepsColor},var(--aqua));border-radius:6px;transition:width .8s"></div>
-          </div>
-          <div style="font-size:12px;color:${stepsColor};margin-top:5px;font-weight:600">${stepsPct}%${stepsPct>=100?' 🎯 Цель выполнена!':''}</div>
-        </div>
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px">
+        ${yw.distance_km?`<div style="text-align:center;background:rgba(255,255,255,0.03);border-radius:10px;padding:10px 4px"><div style="font-size:20px;font-weight:700;letter-spacing:-.5px;color:var(--blue)">${yw.distance_km}</div><div style="font-size:9px;color:var(--muted2);margin-top:2px;text-transform:uppercase;letter-spacing:.5px">км</div></div>`:''}
+        ${yw.duration_min?`<div style="text-align:center;background:rgba(255,255,255,0.03);border-radius:10px;padding:10px 4px"><div style="font-size:20px;font-weight:700;letter-spacing:-.5px;color:var(--teal)">${Math.round(yw.duration_min)}</div><div style="font-size:9px;color:var(--muted2);margin-top:2px;text-transform:uppercase;letter-spacing:.5px">мин</div></div>`:''}
+        ${yw.calories?`<div style="text-align:center;background:rgba(255,255,255,0.03);border-radius:10px;padding:10px 4px"><div style="font-size:20px;font-weight:700;letter-spacing:-.5px;color:var(--orange)">${yw.calories}</div><div style="font-size:9px;color:var(--muted2);margin-top:2px;text-transform:uppercase;letter-spacing:.5px">ккал</div></div>`:''}
+        ${yw.avg_hr?`<div style="text-align:center;background:rgba(255,255,255,0.03);border-radius:10px;padding:10px 4px"><div style="font-size:20px;font-weight:700;letter-spacing:-.5px;color:var(--red)">${yw.avg_hr}</div><div style="font-size:9px;color:var(--muted2);margin-top:2px;text-transform:uppercase;letter-spacing:.5px">пульс</div></div>`:''}
       </div>
     </div>`;
-  }catch(e){}
+  }
 
-  let nutHtml='';
+  // Metrics grid
+  const m=cc;
+  const metricsHtml=`
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">
+    <div class="card" style="margin-bottom:0;position:relative;overflow:hidden">
+      <div style="position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,#a855f7,transparent)"></div>
+      <div class="card-title">💜 HRV</div>
+      <div style="font-size:30px;font-weight:800;letter-spacing:-1px;color:#a855f7;line-height:1">${m.hrv||'—'}</div>
+      <div style="font-size:11px;color:var(--muted2);margin-top:4px">${m.hrv&&m.hrv_avg?`норма ${m.hrv_avg}мс`:'мс'}</div>
+    </div>
+    <div class="card" style="margin-bottom:0;position:relative;overflow:hidden">
+      <div style="position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,var(--red),transparent)"></div>
+      <div class="card-title">❤️ ЧСС покоя</div>
+      <div style="font-size:30px;font-weight:800;letter-spacing:-1px;color:var(--red);line-height:1">${m.rhr||'—'}</div>
+      <div style="font-size:11px;color:var(--muted2);margin-top:4px">уд/мин</div>
+    </div>
+    <div class="card" style="margin-bottom:0;position:relative;overflow:hidden">
+      <div style="position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,var(--blue),transparent)"></div>
+      <div class="card-title">🌙 Сон</div>
+      <div style="font-size:30px;font-weight:800;letter-spacing:-1px;color:var(--blue);line-height:1">${m.sleep_h||'—'}</div>
+      <div style="font-size:11px;color:var(--muted2);margin-top:4px">часов</div>
+    </div>
+    <div class="card" style="margin-bottom:0;position:relative;overflow:hidden">
+      <div style="position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,var(--yellow),transparent)"></div>
+      <div class="card-title">⚖️ Вес</div>
+      <div style="font-size:30px;font-weight:800;letter-spacing:-1px;color:var(--yellow);line-height:1">${m.weight||'—'}</div>
+      <div style="font-size:11px;color:var(--muted2);margin-top:4px">кг</div>
+    </div>
+  </div>`;
+
+  // Alerts
+  let alertsHtml='';
+  if(cc.alerts&&cc.alerts.length>0){
+    cc.alerts.forEach(a=>{
+      const colors={warn:'rgba(255,107,43,0.06)|rgba(255,107,43,0.2)',
+                    info:'rgba(61,139,255,0.06)|rgba(61,139,255,0.15)',
+                    ok:'rgba(184,255,61,0.05)|rgba(184,255,61,0.15)'};
+      const [bg,border]=(colors[a.type]||colors.info).split('|');
+      alertsHtml+=`<div style="background:${bg};border:1px solid ${border};border-radius:14px;padding:13px 15px;margin-bottom:8px;display:flex;align-items:flex-start;gap:10px">
+        <div style="font-size:18px;flex-shrink:0;margin-top:1px">${a.icon}</div>
+        <div><div style="font-size:13px;font-weight:600;margin-bottom:3px">${a.title}</div>
+        <div style="font-size:12px;color:var(--muted2);line-height:1.4">${a.text}</div></div>
+      </div>`;
+    });
+  }
+
+  // Nutrition gap
+  const nut=cc.nutrition||{};
+  const calPct=Math.min(100,Math.round((nut.cal||0)/cc.cal_goal*100)||0);
+  const protPct=Math.min(100,Math.round((nut.prot||0)/cc.prot_goal*100)||0);
+  const nutHtml=`
+  <div class="card" style="margin-bottom:10px">
+    <div class="card-title" style="display:flex;justify-content:space-between">
+      <span>Nutrition Gap</span>
+      <span style="color:var(--yellow);font-size:12px;font-weight:600">${nut.cal||0} / ${cc.cal_goal} ккал</span>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:10px">
+      <div style="display:flex;align-items:center;gap:10px">
+        <div style="font-size:11px;color:var(--blue);width:52px;flex-shrink:0;font-weight:500">Белок</div>
+        <div style="flex:1;height:5px;background:rgba(255,255,255,0.05);border-radius:3px;overflow:hidden">
+          <div style="width:${protPct}%;height:100%;background:var(--blue);border-radius:3px;transition:width .6s"></div>
+        </div>
+        <div style="font-size:11px;font-weight:600;color:${cc.prot_gap>30?'var(--red)':'var(--green)'};width:70px;text-align:right">
+          ${nut.prot||0}г ${cc.prot_gap>0?`<span style="font-size:9px;opacity:.7">−${cc.prot_gap}г</span>`:'✓'}
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px">
+        <div style="font-size:11px;color:var(--orange);width:52px;flex-shrink:0;font-weight:500">Углев.</div>
+        <div style="flex:1;height:5px;background:rgba(255,255,255,0.05);border-radius:3px;overflow:hidden">
+          <div style="width:${Math.min(100,Math.round((nut.carbs||0)/250*100))}%;height:100%;background:var(--orange);border-radius:3px"></div>
+        </div>
+        <div style="font-size:11px;font-weight:600;color:var(--muted2);width:70px;text-align:right">${nut.carbs||0}г</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px">
+        <div style="font-size:11px;color:var(--green);width:52px;flex-shrink:0;font-weight:500">Жиры</div>
+        <div style="flex:1;height:5px;background:rgba(255,255,255,0.05);border-radius:3px;overflow:hidden">
+          <div style="width:${Math.min(100,Math.round((nut.fat||0)/80*100))}%;height:100%;background:var(--green);border-radius:3px"></div>
+        </div>
+        <div style="font-size:11px;font-weight:600;color:var(--muted2);width:70px;text-align:right">${nut.fat||0}г</div>
+      </div>
+    </div>
+  </div>`;
+
+  // Steps
+  const steps=cc.steps||0;
+  const stepsGoal=parseInt(cc.goals?.steps_target||10000);
+  const stepsPct=Math.min(100,Math.round(steps/stepsGoal*100));
+  const stepsColor=stepsPct>=100?'var(--green)':stepsPct>=70?'var(--yellow)':'var(--blue)';
+  const stepsHtml=`
+  <div class="card" style="margin-bottom:10px;display:flex;align-items:center;gap:16px">
+    <div>
+      <div class="card-title" style="margin-bottom:4px">👟 Шаги</div>
+      <div style="font-size:34px;font-weight:800;letter-spacing:-1.5px;color:${stepsColor};line-height:1">${steps.toLocaleString()}</div>
+      <div style="font-size:11px;color:var(--muted2);margin-top:3px">≈ ${Math.round(steps*0.04)} ккал</div>
+    </div>
+    <div style="flex:1">
+      <div style="background:rgba(255,255,255,0.05);border-radius:6px;height:8px;overflow:hidden;margin-bottom:5px">
+        <div style="width:${stepsPct}%;height:100%;background:linear-gradient(90deg,${stepsColor},var(--teal));border-radius:6px;transition:width .8s"></div>
+      </div>
+      <div style="font-size:11px;color:${stepsColor};font-weight:600">${stepsPct}% от ${stepsGoal.toLocaleString()}</div>
+    </div>
+  </div>`;
+
+  // Header with user + date
+  const userName=CURRENT_USER?.name||'';
+  const hour=new Date().getHours();
+  const greeting=hour<12?'Доброе утро':hour<17?'Добрый день':'Добрый вечер';
+  const daysLeft=cc.goals?.race_date?Math.ceil((new Date(cc.goals.race_date)-new Date())/86400000):null;
+  const headerHtml=`
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+    <div style="font-size:11px;font-weight:600;letter-spacing:3px;text-transform:uppercase;color:var(--muted2)">SmartFit</div>
+    ${CURRENT_USER?.name?`<div style="width:34px;height:34px;border-radius:50%;background:linear-gradient(135deg,var(--green),var(--teal));display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;color:#060a0e">${userName[0].toUpperCase()}</div>`:''}
+  </div>
+  <div style="font-size:13px;color:var(--muted2);margin-bottom:16px">
+    <strong style="color:var(--text);font-weight:600">${greeting}${userName?', '+userName:''}</strong>
+    ${daysLeft&&daysLeft>0?` · <span style="color:var(--green)">${daysLeft} дней до гонки</span>`:''}
+  </div>`;
+
+  // Today Score hero
+  const scoreHtml=`
+  <div style="background:linear-gradient(135deg,rgba(184,255,61,0.07),rgba(0,229,204,0.04));border:1px solid rgba(184,255,61,0.18);border-radius:22px;padding:20px;margin-bottom:10px;position:relative;overflow:hidden">
+    <div style="position:absolute;top:-40px;right:-40px;width:140px;height:140px;background:radial-gradient(circle,rgba(184,255,61,0.1),transparent 70%);pointer-events:none"></div>
+    <div style="font-size:10px;font-weight:600;letter-spacing:2.5px;text-transform:uppercase;color:var(--green);margin-bottom:10px">Today Score</div>
+    <div style="display:flex;align-items:flex-end;gap:10px;margin-bottom:12px">
+      <div style="font-size:72px;font-weight:800;letter-spacing:-4px;line-height:1;color:${scoreColor}">${score}</div>
+      <div style="padding-bottom:8px">
+        <div style="font-size:14px;font-weight:600">${scoreLabel}</div>
+        <div style="font-size:11px;color:var(--muted2);margin-top:3px">
+          ${m.sleep_h?`сон ${m.sleep_h}ч · `:''}${m.rhr?`ЧСС ${m.rhr} · `:''}${m.hrv?`HRV ${m.hrv}`:'синхронизируй Garmin'}
+        </div>
+      </div>
+    </div>
+    <div style="display:flex;gap:3px;margin-bottom:14px">${segs}</div>
+    <div style="background:rgba(0,0,0,0.25);border-radius:12px;padding:12px;border-left:3px solid var(--green)">
+      <div style="font-size:9px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:var(--green);margin-bottom:7px">🤖 AI-тренер</div>
+      <div id="ai-tip-text" style="font-size:13px;line-height:1.6;color:var(--text)">
+        <span style="color:var(--muted2)">Загрузка рекомендации...</span>
+      </div>
+    </div>
+  </div>`;
+
+  // Today workout card
+  const garminDone=false; // will check below
+  const workoutHtml=`
+  <div class="workout-block ${done?'done':''}" onclick="toggleDone(0)" style="margin-bottom:10px">
+    <div class="wb-icon" style="background:${bgMap[plan.type]||'var(--bg3)'}">${plan.icon}</div>
+    <div class="wb-info">
+      <div class="wb-name">${plan.label}</div>
+      <div class="wb-detail">${plan.detail||'По плану'}</div>
+    </div>
+    <div class="wb-check">${done?'✓':''}</div>
+  </div>`;
+
+  el.innerHTML = headerHtml + weekHtml + scoreHtml + workoutHtml + yesterdayHtml + metricsHtml + stepsHtml + nutHtml + alertsHtml;
+
+  // Load AI tip async
   try{
-    const nut=await get('/api/nutrition/today');
-    const cal=nut.totals?.calories||0;const prot=nut.totals?.protein_g||0;
-    const tProt=nut.goals?.protein_g||150;const pct=Math.min(100,Math.round(prot/tProt*100));
-    nutHtml=`<div class="card" style="margin-top:12px"><div class="card-title">Питание сегодня</div><div style="display:flex;gap:20px;align-items:center"><div><div style="font-family:var(--font-d);font-size:36px;font-weight:900;color:var(--yellow)">${Math.round(cal)}</div><div style="font-size:12px;color:var(--muted)">ккал / ${nut.goals?.calories||2300}</div></div><div style="flex:1"><div style="font-size:12px;color:var(--muted);margin-bottom:5px">Белок: ${Math.round(prot)}г / ${tProt}г (${pct}%)</div><div style="background:rgba(255,255,255,0.05);border-radius:4px;height:8px;overflow:hidden"><div style="width:${pct}%;height:100%;background:linear-gradient(90deg,var(--blue),var(--aqua));border-radius:4px"></div></div><div style="font-size:11px;color:var(--muted);margin-top:5px">${nut.meals?.length||0} приёмов пищи</div></div></div></div>`;
-  }catch(e){nutHtml=`<div class="card" style="margin-top:12px"><div style="color:var(--muted);font-size:13px">Ошибка загрузки данных</div></div>`;}
-  const userBadge=CURRENT_USER&&CURRENT_USER.email?`<div class="user-badge"><div class="user-avatar">${(CURRENT_USER.name||'?')[0].toUpperCase()}</div><div><div class="user-name">${CURRENT_USER.name}</div><div class="user-email">${CURRENT_USER.email}</div></div><button class="logout-btn" onclick="doLogout()">Выйти</button></div>`:'';
-  document.getElementById('today-content').innerHTML=`${userBadge}${weekHtml}<div style="font-family:var(--font-d);font-size:40px;font-weight:900;letter-spacing:-1px;margin-bottom:6px">${dayNames[DAY]}</div><div class="day-type ${plan.type}">${plan.icon} ${plan.label}</div>${workoutHtml}${stepsHtml}${nutHtml}`;
+    const tipData=await get('/api/ai/daily-tip');
+    const tipEl=document.getElementById('ai-tip-text');
+    if(tipEl&&tipData.tip) tipEl.textContent=tipData.tip;
+  }catch(e){
+    const tipEl=document.getElementById('ai-tip-text');
+    if(tipEl) tipEl.textContent='Тренируйся по плану и следи за питанием.';
+  }
 }
+
 
 function toggleDone(idx){
   if(doneWorkouts.includes(idx))doneWorkouts=doneWorkouts.filter(i=>i!==idx);

@@ -2,113 +2,282 @@ from fastapi import APIRouter, Depends, HTTPException
 from database import get_db
 from routers.auth import get_optional_user
 from datetime import date, timedelta
-import os, json, requests
+import requests, json, os
 
 router = APIRouter()
 
-ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "")
+def get_uid(user):
+    return user["id"] if user else 1
 
-def call_claude(prompt: str) -> str:
-    if not ANTHROPIC_API_KEY:
-        return "💡 AI-анализ недоступен. Добавь ANTHROPIC_API_KEY в переменные Railway."
-    r = requests.post(
-        "https://api.anthropic.com/v1/messages",
-        headers={"x-api-key": ANTHROPIC_API_KEY, "anthropic-version": "2023-06-01", "content-type": "application/json"},
-        json={"model": "claude-haiku-4-5-20251001", "max_tokens": 600,
-              "messages": [{"role": "user", "content": prompt}]},
-        timeout=30
-    )
-    data = r.json()
-    if "content" not in data:
-        raise Exception(data.get("error", {}).get("message", "API error"))
-    return data["content"][0]["text"]
+def compute_today_score(sleep_h, hrv, rhr, fatigue_pct):
+    """Compute 0-100 readiness score"""
+    score = 50  # baseline
+    # Sleep: 8h = perfect
+    if sleep_h:
+        s = min(sleep_h / 8.0, 1.2)
+        score += (s - 0.625) * 24
+    # HRV: higher = better (normalize around 60ms)
+    if hrv:
+        score += min((hrv - 40) / 2, 15)
+    # RHR: lower = better (normalize around 55)
+    if rhr:
+        score += min((60 - rhr) / 2, 12)
+    # Fatigue: lower = better
+    if fatigue_pct is not None:
+        score -= fatigue_pct * 0.2
+    return max(10, min(99, round(score)))
+
+def score_label(score):
+    if score >= 85: return "Отличная готовность", "green"
+    if score >= 70: return "Хорошая готовность", "green"
+    if score >= 55: return "Умеренная готовность", "yellow"
+    if score >= 40: return "Нужен отдых", "orange"
+    return "Восстановление", "red"
+
+@router.get("/command-center")
+def get_command_center(user=Depends(get_optional_user), db=Depends(get_db)):
+    uid = get_uid(user)
+    today = date.today().isoformat()
+    yesterday = (date.today() - timedelta(days=1)).isoformat()
+
+    # --- Goals ---
+    goals = {r["key"]: r["value"] for r in
+             db.execute("SELECT key,value FROM goals WHERE user_id=?", (uid,)).fetchall()}
+
+    # --- Today health metrics ---
+    health_today = db.execute(
+        "SELECT * FROM health_metrics WHERE user_id=? AND date=?", (uid, today)
+    ).fetchone()
+    health_today = dict(health_today) if health_today else {}
+
+    # --- Yesterday health (for HRV/sleep from Garmin which comes next day) ---
+    health_yest = db.execute(
+        "SELECT * FROM health_metrics WHERE user_id=? AND date=?", (uid, yesterday)
+    ).fetchone()
+    health_yest = dict(health_yest) if health_yest else {}
+
+    # Use most recent available values
+    def pick(*vals):
+        for v in vals:
+            if v: return v
+        return None
+
+    sleep_h  = pick(health_today.get("sleep_hours"), health_yest.get("sleep_hours"))
+    hrv      = pick(health_today.get("hrv"), health_yest.get("hrv"))
+    rhr      = pick(health_today.get("resting_hr"), health_yest.get("resting_hr"))
+    weight   = pick(health_today.get("weight_kg"), health_yest.get("weight_kg"))
+    steps    = health_today.get("steps") or 0
+    vo2max   = pick(health_today.get("vo2max"), health_yest.get("vo2max"))
+
+    # --- Yesterday workout ---
+    yest_workouts = db.execute("""
+        SELECT type, distance_km, duration_min, calories, avg_hr
+        FROM workouts WHERE user_id=? AND date=? ORDER BY id DESC LIMIT 1
+    """, (uid, yesterday)).fetchone()
+    yest_workout = dict(yest_workouts) if yest_workouts else None
+
+    # --- Today nutrition ---
+    nut_today = db.execute("""
+        SELECT ROUND(SUM(calories)) as cal, ROUND(SUM(protein_g)) as prot,
+               ROUND(SUM(carbs_g)) as carbs, ROUND(SUM(fat_g)) as fat,
+               COUNT(*) as meals
+        FROM nutrition WHERE user_id=? AND date=?
+    """, (uid, today)).fetchone()
+    nut = dict(nut_today) if nut_today else {}
+
+    # --- Consecutive training days (fatigue) ---
+    rows = db.execute("""
+        SELECT DISTINCT date FROM workouts WHERE user_id=?
+        AND date >= date('now','-14 days') AND date <= ?
+        ORDER BY date DESC
+    """, (uid, today)).fetchall()
+    dates = [r["date"] for r in rows]
+    consec = 0
+    check = date.today()
+    for _ in range(14):
+        if check.isoformat() in dates:
+            consec += 1
+            check -= timedelta(days=1)
+        else:
+            break
+    fatigue_pct = min(consec * 15, 80)
+
+    # --- HRV trend ---
+    hrv_trend = db.execute("""
+        SELECT ROUND(AVG(hrv)) as avg_hrv FROM health_metrics
+        WHERE user_id=? AND date >= date('now','-7 days') AND hrv IS NOT NULL
+    """, (uid,)).fetchone()
+    hrv_avg = hrv_trend["avg_hrv"] if hrv_trend else None
+
+    # --- Today Score ---
+    score = compute_today_score(sleep_h, hrv, rhr, fatigue_pct)
+    label, color = score_label(score)
+
+    # --- Nutrition gaps ---
+    cal_goal  = int(goals.get("calories_target", 2300))
+    prot_goal = int(goals.get("protein_target", 150))
+    cal_eaten = nut.get("cal") or 0
+    prot_eaten = nut.get("prot") or 0
+    cal_gap  = cal_goal - cal_eaten
+    prot_gap = prot_goal - prot_eaten
+
+    # --- Risk alerts ---
+    alerts = []
+    if consec >= 3:
+        alerts.append({"type":"warn","icon":"⚠️","title":f"Усталость: {consec} дней подряд",
+                       "text":"Рекомендуется лёгкая тренировка или отдых сегодня."})
+    if sleep_h and sleep_h < 6:
+        alerts.append({"type":"warn","icon":"😴","title":"Мало сна",
+                       "text":f"Только {sleep_h}ч сна. Интенсивная тренировка не рекомендуется."})
+    if prot_gap > 50:
+        alerts.append({"type":"info","icon":"🥩","title":f"Белка не хватает {prot_gap}г",
+                       "text":"Добавь творог, яйца или куриную грудку."})
+    if vo2max and float(vo2max) > 40:
+        alerts.append({"type":"ok","icon":"📈","title":"Форма растёт",
+                       "text":f"VO2max {vo2max} — ты на правильном треке к гонке."})
+
+    # --- Training plan for today ---
+    dow = date.today().weekday()  # 0=Mon
+    plan_today = db.execute(
+        "SELECT plan_json FROM user_plans WHERE user_id=? ORDER BY id DESC LIMIT 1", (uid,)
+    ).fetchone()
+    today_plan_item = None
+    if plan_today:
+        try:
+            plan = json.loads(plan_today["plan_json"])
+            # weekday: Mon=0..Sun=6, our plan: Sun=0..Sat=6
+            plan_idx = (dow + 1) % 7
+            if plan_idx < len(plan):
+                today_plan_item = plan[plan_idx]
+        except Exception:
+            pass
+
+    return {
+        "score": score,
+        "score_label": label,
+        "score_color": color,
+        "sleep_h": sleep_h,
+        "hrv": hrv,
+        "hrv_avg": hrv_avg,
+        "rhr": rhr,
+        "weight": weight,
+        "steps": steps,
+        "vo2max": vo2max,
+        "fatigue_pct": fatigue_pct,
+        "consec_days": consec,
+        "yesterday_workout": yest_workout,
+        "nutrition": nut,
+        "cal_goal": cal_goal,
+        "prot_goal": prot_goal,
+        "cal_gap": cal_gap,
+        "prot_gap": prot_gap,
+        "alerts": alerts,
+        "today_plan": today_plan_item,
+        "goals": goals,
+    }
 
 @router.get("/weekly")
-def weekly_analysis(user=Depends(get_optional_user), db=Depends(get_db)):
-    uid = user["id"] if user else 1
-    today = date.today()
-    week_ago = today - timedelta(days=7)
+def get_weekly_analysis(user=Depends(get_optional_user), db=Depends(get_db)):
+    uid = get_uid(user)
+    api_key = os.environ.get("ANTHROPIC_API_KEY","")
+    if not api_key:
+        raise HTTPException(400, "API key not configured")
 
     workouts = db.execute("""
-        SELECT type, date, distance_km, duration_min, avg_hr
-        FROM workouts WHERE user_id=? AND date >= ?
+        SELECT date, type, distance_km, duration_min, calories, avg_hr
+        FROM workouts WHERE user_id=? AND date >= date('now','-7 days')
         ORDER BY date DESC
-    """, (uid, week_ago.isoformat())).fetchall()
-
+    """, (uid,)).fetchall()
     nutrition = db.execute("""
-        SELECT ROUND(SUM(calories)) as cal, ROUND(SUM(protein_g),1) as prot,
-               COUNT(DISTINCT date) as days
-        FROM nutrition WHERE user_id=? AND date >= ?
-    """, (uid, week_ago.isoformat())).fetchone()
+        SELECT date, SUM(calories) as cal, SUM(protein_g) as prot
+        FROM nutrition WHERE user_id=? AND date >= date('now','-7 days')
+        GROUP BY date ORDER BY date DESC
+    """, (uid,)).fetchall()
+    goals = {r["key"]: r["value"] for r in
+             db.execute("SELECT key,value FROM goals WHERE user_id=?", (uid,)).fetchall()}
 
-    goals = db.execute("SELECT key, value FROM goals WHERE user_id=?", (uid,)).fetchall()
-    goals_dict = {r["key"]: r["value"] for r in goals}
+    prompt = f"""Ты персональный AI-тренер. Дай краткий анализ недели спортсмена на русском языке.
 
-    race_date = goals_dict.get("race_date", "2026-04-26")
-    days_to_race = (date.fromisoformat(race_date) - today).days
+Тренировки за 7 дней:
+{json.dumps([dict(w) for w in workouts], ensure_ascii=False)}
 
-    workouts_text = "\n".join([
-        f"- {w['date']}: {w['type']}, {w['distance_km'] or 0}км, {w['duration_min'] or 0}мин, пульс {w['avg_hr'] or '—'}"
-        for w in workouts
-    ]) or "Тренировок за неделю нет"
+Питание за 7 дней:
+{json.dumps([dict(n) for n in nutrition], ensure_ascii=False)}
 
-    nut = dict(nutrition) if nutrition else {}
+Цели: {json.dumps(goals, ensure_ascii=False)}
 
-    prompt = f"""Ты персональный тренер и диетолог. Проанализируй данные спортсмена за последние 7 дней и дай конкретные советы на русском языке.
+Дай анализ в 3-4 предложениях: что хорошо, что улучшить, конкретный совет на следующую неделю. Будь конкретным и мотивирующим."""
 
-ТРЕНИРОВКИ ЗА НЕДЕЛЮ:
-{workouts_text}
+    resp = requests.post("https://api.anthropic.com/v1/messages",
+        headers={"x-api-key": api_key, "anthropic-version": "2023-06-01",
+                 "content-type": "application/json"},
+        json={"model": "claude-haiku-4-5-20251001", "max_tokens": 400,
+              "messages": [{"role": "user", "content": prompt}]},
+        timeout=30)
+    resp.raise_for_status()
+    data = resp.json()
+    text = data["content"][0]["text"] if data.get("content") else "Нет данных"
+    return {"analysis": text}
 
-ПИТАНИЕ ЗА НЕДЕЛЮ:
-Калории: {nut.get('cal', 0)} ккал суммарно ({round((nut.get('cal') or 0)/max(nut.get('days',1),1))} ккал/день)
-Белок: {nut.get('prot', 0)}г суммарно
-Дней с записями питания: {nut.get('days', 0)} из 7
 
-ЦЕЛИ:
-Дней до гонки: {days_to_race}
-Цель калорий/день: {goals_dict.get('calories_target', 2300)} ккал
-Цель белка/день: {goals_dict.get('protein_target', 150)}г
+@router.get("/daily-tip")
+def get_daily_tip(user=Depends(get_optional_user), db=Depends(get_db)):
+    """Generate today's AI recommendation based on all available data"""
+    uid = get_uid(user)
+    api_key = os.environ.get("ANTHROPIC_API_KEY","")
+    if not api_key:
+        return {"tip": "Добавь API ключ для AI рекомендаций."}
 
-Дай анализ в таком формате (используй эмодзи):
-1. 💪 Что хорошо (2-3 пункта)
-2. ⚠️ Что улучшить (2-3 конкретных совета)
-3. 🎯 План на следующую неделю (3 конкретных действия)
+    today = date.today().isoformat()
+    yesterday = (date.today() - timedelta(days=1)).isoformat()
 
-Будь конкретным, используй цифры из данных. Максимум 300 слов."""
+    health = db.execute(
+        "SELECT * FROM health_metrics WHERE user_id=? AND date IN (?,?) ORDER BY date DESC LIMIT 1",
+        (uid, today, yesterday)
+    ).fetchone()
+    h = dict(health) if health else {}
+
+    nut = db.execute("""
+        SELECT ROUND(SUM(calories)) as cal, ROUND(SUM(protein_g)) as prot
+        FROM nutrition WHERE user_id=? AND date=?
+    """, (uid, today)).fetchone()
+    n = dict(nut) if nut else {}
+
+    recent_workouts = db.execute("""
+        SELECT date, type, distance_km, duration_min FROM workouts
+        WHERE user_id=? AND date >= date('now','-5 days') ORDER BY date DESC LIMIT 5
+    """, (uid,)).fetchall()
+
+    goals = {r["key"]: r["value"] for r in
+             db.execute("SELECT key,value FROM goals WHERE user_id=?", (uid,)).fetchall()}
+
+    plan = db.execute(
+        "SELECT plan_json, race_date, race_name FROM user_plans WHERE user_id=? ORDER BY id DESC LIMIT 1",
+        (uid,)
+    ).fetchone()
+    race_info = f"Цель: {plan['race_name']}, дата: {plan['race_date']}" if plan else "Цель не указана"
+
+    prompt = f"""Ты AI-тренер. Дай одну конкретную рекомендацию на сегодня. Только 1-2 предложения, без вступлений.
+
+Данные спортсмена:
+- Сон: {h.get('sleep_hours','?')}ч, HRV: {h.get('hrv','?')}, ЧСС покоя: {h.get('resting_hr','?')}
+- Вес: {h.get('weight_kg','?')} кг
+- Питание сегодня: {n.get('cal','0')} ккал, белок {n.get('prot','0')}г (цель: {goals.get('protein_target','150')}г)
+- Последние тренировки: {json.dumps([dict(w) for w in recent_workouts], ensure_ascii=False)}
+- {race_info}
+
+Рекомендация (1-2 предложения, конкретно что делать сегодня):"""
 
     try:
-        analysis = call_claude(prompt)
-        return {"analysis": analysis, "period": f"{week_ago} — {today}", "workouts_count": len(workouts)}
+        resp = requests.post("https://api.anthropic.com/v1/messages",
+            headers={"x-api-key": api_key, "anthropic-version": "2023-06-01",
+                     "content-type": "application/json"},
+            json={"model": "claude-haiku-4-5-20251001", "max_tokens": 150,
+                  "messages": [{"role": "user", "content": prompt}]},
+            timeout=20)
+        resp.raise_for_status()
+        data = resp.json()
+        tip = data["content"][0]["text"] if data.get("content") else ""
+        return {"tip": tip}
     except Exception as e:
-        raise HTTPException(500, str(e))
-
-@router.get("/workout/{workout_id}")
-def analyze_workout(workout_id: int, user=Depends(get_optional_user), db=Depends(get_db)):
-    uid = user["id"] if user else 1
-    w = db.execute("SELECT * FROM workouts WHERE id=? AND user_id=?", (workout_id, uid)).fetchone()
-    if not w:
-        raise HTTPException(404, "Workout not found")
-    w = dict(w)
-
-    prev = db.execute("""
-        SELECT AVG(distance_km) as avg_dist, AVG(duration_min) as avg_dur, AVG(avg_hr) as avg_hr
-        FROM workouts WHERE user_id=? AND type=? AND id!=? AND distance_km > 0
-        LIMIT 5
-    """, (uid, w["type"], workout_id)).fetchone()
-    p = dict(prev) if prev else {}
-
-    pace = round(w["duration_min"] / w["distance_km"], 1) if w.get("distance_km") and w["distance_km"] > 0 else None
-
-    prompt = f"""Коротко проанализируй тренировку спортсмена на русском языке (максимум 150 слов).
-
-ТРЕНИРОВКА: {w['type']}, {w['date']}, {w.get('distance_km',0)}км, {w.get('duration_min',0)}мин, {"темп "+str(pace)+" мин/км, " if pace else ""}пульс {w.get('avg_hr','—')}
-
-СРЕДНЕЕ ПО ПРЕДЫДУЩИМ: дистанция {round(p.get('avg_dist') or 0,1)}км, время {round(p.get('avg_dur') or 0,1)}мин, пульс {round(p.get('avg_hr') or 0)}
-
-Дай: 1 похвалу, 1 наблюдение, 1 совет. Используй эмодзи."""
-
-    try:
-        analysis = call_claude(prompt)
-        return {"analysis": analysis, "workout": w}
-    except Exception as e:
-        raise HTTPException(500, str(e))
+        return {"tip": "Тренируйся по плану и следи за питанием."}
