@@ -60,7 +60,16 @@ app.include_router(nutrition.router, prefix="/api/nutrition", tags=["nutrition"]
 app.include_router(garmin.router, prefix="/api/garmin", tags=["garmin"])
 app.include_router(health.router, prefix="/api/health", tags=["health"])
 
-app.mount("/static", StaticFiles(directory="../frontend"), name="static")
+app.mount("/icons", StaticFiles(directory="../frontend/icons"), name="icons")
+
+@app.get("/manifest.json")
+async def manifest():
+    return FileResponse("../frontend/manifest.json", media_type="application/manifest+json")
+
+@app.get("/sw.js")
+async def service_worker():
+    return FileResponse("../frontend/sw.js", media_type="application/javascript",
+                       headers={"Service-Worker-Allowed": "/"})
 
 @app.get("/")
 async def root():

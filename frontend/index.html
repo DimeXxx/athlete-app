@@ -2041,5 +2041,21 @@ document.addEventListener('DOMContentLoaded',()=>{
 });
 init();
 </script>
+<script>
+if('serviceWorker' in navigator){
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js')
+      .then(r => console.log('SW registered'))
+      .catch(e => console.log('SW error', e));
+  });
+}
+
+// Handle ?screen= shortcut from PWA shortcuts
+const urlParams = new URLSearchParams(window.location.search);
+const startScreen = urlParams.get('screen');
+if(startScreen){
+  window.addEventListener('appReady', () => switchScreen(startScreen));
+}
+</script>
 </body>
 </html>
