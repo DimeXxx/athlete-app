@@ -18,6 +18,22 @@
   --glass:rgba(255,255,255,0.04);--glass2:rgba(255,255,255,0.07);
   --font:'Inter',sans-serif;--font-d:'Inter',sans-serif;--font-b:'Inter',sans-serif;
 }
+[data-theme="light"]{
+  --bg:#f5f7fa;--bg2:#ffffff;--bg3:#eef1f5;--card:#ffffff;
+  --border:rgba(0,0,0,0.08);--border2:rgba(0,0,0,0.13);
+  --blue:#2472e8;--aqua:#00b8a5;--orange:#e8570a;--yellow:#d4a000;
+  --green:#5cb800;--teal:#00b8a5;--red:#e02030;
+  --text:#0f1923;--muted:#9aaabb;--muted2:#5a7080;
+  --glass:rgba(0,0,0,0.03);--glass2:rgba(0,0,0,0.06);
+}
+[data-theme="light"] body::before{background:radial-gradient(circle,rgba(92,184,0,0.06) 0%,transparent 65%)}
+[data-theme="light"] body::after{background:radial-gradient(circle,rgba(0,184,165,0.05) 0%,transparent 65%)}
+[data-theme="light"] .nav{background:rgba(245,247,250,0.95)}
+[data-theme="light"] .modal{background:#ffffff}
+[data-theme="light"] .input-field{background:#f0f3f7;color:#0f1923}
+[data-theme="light"] select option{background:#ffffff;color:#0f1923}
+[data-theme="light"] .card{background:rgba(255,255,255,0.9)}
+[data-theme="light"] .kpi{background:rgba(255,255,255,0.85)}
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 body{background:var(--bg);color:var(--text);font-family:var(--font);min-height:100vh;overflow-x:hidden;position:relative}
 body::before{content:'';position:fixed;top:-100px;right:-100px;width:400px;height:400px;background:radial-gradient(circle,rgba(184,255,61,0.04) 0%,transparent 65%);pointer-events:none;z-index:0}
@@ -163,6 +179,131 @@ body::after{content:'';position:fixed;bottom:0;left:-80px;width:300px;height:300
 select.plan-day-input option{background:#111820;color:#dde8f2}
 select option{background:#111820 !important;color:#dde8f2 !important}
 </style>
+<script>
+// ===== i18n =====
+const TRANSLATIONS = {
+  ru: {
+    today:'Сегодня', workouts:'Тренировки', ai:'AI', goal:'Цель', progress:'Прогресс',
+    nutrition:'Питание', summary:'Итоги', plan:'План', profile:'Профиль',
+    greeting_morning:'Доброе утро', greeting_day:'Добрый день', greeting_evening:'Добрый вечер',
+    days_left:'дней до гонки', today_score:'Today Score',
+    hrv:'ЧСС покоя', rhr:'ЧСС покоя', sleep:'Сон', weight:'Вес', steps:'Шаги',
+    yesterday:'Вчера из Garmin', nutrition_gap:'Nutrition Gap',
+    save:'Сохранить профиль', logout:'Выйти',
+    dark_theme:'Тёмная тема', light_theme:'Светлая тема',
+    language:'Язык', theme:'Тема',
+    sync:'Синхронизировать', full_sync:'Загрузить всю историю (2 года)',
+    analyze:'Анализировать', get_analysis:'Получить анализ недели',
+    loading:'Загрузка...', no_workouts:'Нет тренировок за этот период',
+    protein:'Белок', carbs:'Углев.', fat:'Жиры',
+    hours:'часов', km:'км', min:'мин', kcal:'ккал', bpm:'уд/мин',
+    race_days:'дней', race_prep:'Подготовка',
+  },
+  en: {
+    today:'Today', workouts:'Workouts', ai:'AI', goal:'Goal', progress:'Progress',
+    nutrition:'Nutrition', summary:'Summary', plan:'Plan', profile:'Profile',
+    greeting_morning:'Good morning', greeting_day:'Good afternoon', greeting_evening:'Good evening',
+    days_left:'days to race', today_score:'Today Score',
+    hrv:'HRV', rhr:'Resting HR', sleep:'Sleep', weight:'Weight', steps:'Steps',
+    yesterday:'Yesterday from Garmin', nutrition_gap:'Nutrition Gap',
+    save:'Save Profile', logout:'Logout',
+    dark_theme:'Dark Theme', light_theme:'Light Theme',
+    language:'Language', theme:'Theme',
+    sync:'Sync', full_sync:'Load full history (2 years)',
+    analyze:'Analyze', get_analysis:'Get weekly analysis',
+    loading:'Loading...', no_workouts:'No workouts for this period',
+    protein:'Protein', carbs:'Carbs', fat:'Fat',
+    hours:'hours', km:'km', min:'min', kcal:'kcal', bpm:'bpm',
+    race_days:'days', race_prep:'Preparation',
+  },
+  ro: {
+    today:'Azi', workouts:'Antrenamente', ai:'AI', goal:'Scop', progress:'Progres',
+    nutrition:'Nutriție', summary:'Rezumat', plan:'Plan', profile:'Profil',
+    greeting_morning:'Bună dimineața', greeting_day:'Bună ziua', greeting_evening:'Bună seara',
+    days_left:'zile până la cursă', today_score:'Scor Azi',
+    hrv:'HRV', rhr:'FC repaus', sleep:'Somn', weight:'Greutate', steps:'Pași',
+    yesterday:'Ieri din Garmin', nutrition_gap:'Deficit Nutriție',
+    save:'Salvează profilul', logout:'Ieșire',
+    dark_theme:'Temă întunecată', light_theme:'Temă luminoasă',
+    language:'Limbă', theme:'Temă',
+    sync:'Sincronizare', full_sync:'Încarcă tot istoricul (2 ani)',
+    analyze:'Analizează', get_analysis:'Analiză săptămânală',
+    loading:'Se încarcă...', no_workouts:'Nicio activitate în această perioadă',
+    protein:'Proteine', carbs:'Glucide', fat:'Grăsimi',
+    hours:'ore', km:'km', min:'min', kcal:'kcal', bpm:'bpm',
+    race_days:'zile', race_prep:'Pregătire',
+  }
+};
+
+// Detect language from browser
+function detectLang(){
+  const saved = localStorage.getItem('app_lang');
+  if(saved) return saved;
+  const lang = navigator.language || navigator.userLanguage || 'ru';
+  if(lang.startsWith('ro')) return 'ro';
+  if(lang.startsWith('en')) return 'en';
+  return 'ru';
+}
+
+let LANG = detectLang();
+function t(key){ return (TRANSLATIONS[LANG] && TRANSLATIONS[LANG][key]) || TRANSLATIONS['en'][key] || key; }
+function setLang(l){ LANG = l; localStorage.setItem('app_lang', l); applyTranslations(); }
+
+function applyTranslations(){
+  // Update nav labels
+  const navMap = {
+    'nav-today':'today','nav-hub':'workouts','nav-ai':'ai',
+    'nav-goal':'goal','nav-stats':'progress','nav-nutrition':'nutrition',
+    'nav-dash':'summary','nav-plan':'plan','nav-profile':'profile'
+  };
+  Object.entries(navMap).forEach(([id, key]) => {
+    const btn = document.getElementById(id);
+    if(btn){ const svg = btn.querySelector('svg'); btn.textContent = t(key); if(svg) btn.prepend(svg); }
+  });
+}
+
+// ===== THEME =====
+function applyTheme(theme){
+  document.documentElement.setAttribute('data-theme', theme);
+  localStorage.setItem('app_theme', theme);
+  document.querySelector('meta[name="theme-color"]')
+    ?.setAttribute('content', theme === 'light' ? '#f5f7fa' : '#060a0e');
+}
+
+function updateThemeLabel(){
+  const isDark = document.documentElement.getAttribute('data-theme') !== 'light';
+  const lbl = document.getElementById('theme-sublabel');
+  const knob = document.getElementById('theme-toggle-knob');
+  const btn = document.getElementById('theme-toggle-btn');
+  const tl = document.getElementById('theme-label');
+  if(lbl) lbl.textContent = isDark ? 'Тёмная' : 'Светлая';
+  if(tl) tl.textContent = isDark ? '🌙 Тема' : '☀️ Тема';
+  if(btn) btn.style.background = isDark ? 'rgba(255,255,255,0.1)' : 'var(--green)';
+  if(knob) { knob.style.left = isDark ? '3px' : ''; knob.style.right = isDark ? '' : '3px'; }
+}
+
+// Set lang select value on profile load
+function initProfileToggles(){
+  updateThemeLabel();
+  const sel = document.getElementById('lang-select');
+  if(sel) sel.value = LANG;
+}
+
+function toggleTheme(){
+  const current = document.documentElement.getAttribute('data-theme') || 'dark';
+  applyTheme(current === 'dark' ? 'light' : 'dark');
+  // Re-render profile to update toggle state
+  const profileEl = document.getElementById('profile-screen-content');
+  if(profileEl && profileEl.innerHTML.includes('pf-name')) loadProfileScreen();
+}
+
+// Init on load
+(function initAppSettings(){
+  const theme = localStorage.getItem('app_theme') || 'dark';
+  applyTheme(theme);
+  LANG = detectLang();
+})();
+</script>
 </head>
 <body>
 <div class="toast" id="toast"></div>
@@ -635,6 +776,7 @@ function showAuth(){
 }
 
 function showApp(){
+  applyTranslations();
   document.getElementById('auth-screen').style.display='none';
   document.getElementById('app').style.display='block';
   loadToday();
@@ -1647,9 +1789,36 @@ async function loadProfileScreen(){
       </div>
     </div>
 
+    <!-- Theme toggle -->
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-bottom:1px solid var(--border)">
+      <div>
+        <div style="font-size:14px;font-weight:600" id="theme-label">🌙 Тема</div>
+        <div style="font-size:11px;color:var(--muted2);margin-top:2px" id="theme-sublabel">Тёмная</div>
+      </div>
+      <div onclick="toggleTheme();updateThemeLabel()" id="theme-toggle-btn"
+        style="width:48px;height:28px;border-radius:14px;cursor:pointer;position:relative;transition:background .3s;background:rgba(255,255,255,0.1)">
+        <div id="theme-toggle-knob" style="width:22px;height:22px;border-radius:50%;background:white;position:absolute;top:3px;left:3px;transition:all .3s"></div>
+      </div>
+    </div>
+
+    <!-- Language selector -->
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-bottom:1px solid var(--border)">
+      <div>
+        <div style="font-size:14px;font-weight:600">🌍 Язык / Language</div>
+        <div style="font-size:11px;color:var(--muted2);margin-top:2px">Автоопределение из системы</div>
+      </div>
+      <select id="lang-select" onchange="setLang(this.value);toast('✅')"
+        style="background:var(--glass2);border:1px solid var(--border2);border-radius:10px;padding:6px 10px;color:var(--text);font-family:var(--font);font-size:13px;outline:none">
+        <option value="ru">🇷🇺 Русский</option>
+        <option value="en">🇬🇧 English</option>
+        <option value="ro">🇷🇴 Română</option>
+      </select>
+    </div>
+
+    <!-- Logout -->
     <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 0">
       <div>
-        <div style="font-size:14px;font-weight:600">🔴 Сменить пароль</div>
+        <div style="font-size:14px;font-weight:600;color:var(--red)">🚪 Выйти</div>
         <div style="font-size:11px;color:var(--muted2);margin-top:2px">${profile.email}</div>
       </div>
       <button onclick="doLogout()" style="background:rgba(255,68,85,0.1);border:1px solid rgba(255,68,85,0.2);border-radius:10px;padding:7px 14px;color:var(--red);font-size:12px;font-weight:600;cursor:pointer">Выйти</button>
@@ -1658,6 +1827,8 @@ async function loadProfileScreen(){
 
   <button onclick="saveProfile()" class="btn-primary" style="margin-top:4px">Сохранить профиль</button>
   `;
+  // Init toggles state
+  setTimeout(initProfileToggles, 50);
 }
 
 function toggleNutrition(el){
