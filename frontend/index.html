@@ -408,7 +408,6 @@ function toggleTheme(){
     <button class="toggle-btn" onclick="setTab('steps')">👟 Шаги</button>
     <button class="toggle-btn" onclick="setTab('ai')">🤖 AI</button>
     <button class="toggle-btn" onclick="setTab('garmin')">Garmin</button>
-    <button class="toggle-btn" onclick="setTab('profile')">Профиль</button>
   </div>
   <div id="tab-run">
     <div class="card">
@@ -554,21 +553,7 @@ function toggleTheme(){
       </div>
     </div>
   </div>
-  <div id="tab-profile" style="display:none">
-    <div class="card" id="profile-card"></div>
-    <div class="card">
-      <div class="card-title">Цели питания</div>
-      <div class="input-row">
-        <div class="input-group"><label class="input-label">Калории</label><input class="input-field" id="g-cal" type="number" placeholder="2300"></div>
-        <div class="input-group"><label class="input-label">Белок (г)</label><input class="input-field" id="g-prot" type="number" placeholder="150"></div>
-      </div>
-      <div class="input-row">
-        <div class="input-group"><label class="input-label">Углеводы (г)</label><input class="input-field" id="g-carbs" type="number" placeholder="230"></div>
-        <div class="input-group"><label class="input-label">Жиры (г)</label><input class="input-field" id="g-fat" type="number" placeholder="75"></div>
-      </div>
-      <button class="btn-primary" onclick="saveGoals()">СОХРАНИТЬ ЦЕЛИ</button>
-    </div>
-  </div>
+
 </div>
 
 <nav class="nav" style="flex-direction:column;padding:6px 0 calc(6px + env(safe-area-inset-bottom))">
@@ -1326,7 +1311,7 @@ function setTab(name){
   document.querySelectorAll('.toggle-btn').forEach((b,i)=>b.classList.toggle('active',['run','swim','steps','ai','garmin','profile'][i]===name));
   if(name==='swim')loadSwimStats();
   if(name==='run'){loadRunStats();loadHistory();}
-  if(name==='profile')renderProfile();
+  if(name==='profile')loadProfileScreen();
   if(name==='garmin')loadGarminStatus();
   if(name==='steps')loadSteps();
 }
