@@ -437,6 +437,11 @@ body::after{content:'';position:fixed;bottom:0;left:-80px;width:300px;height:300
   <button class="nav-btn" onclick="switchScreen('stats')" id="nav-stats"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>Прогресс</button>
 </nav>
 
+<!-- GOAL PLAN SCREEN -->
+<div class="screen" id="screen-goal">
+  <div id="goal-screen-content"><div class="loading"><div class="spinner"></div></div></div>
+</div>
+
 <!-- DASHBOARD SCREEN -->
 <div class="screen" id="screen-dash">
   <div class="screen-title">Статистика</div>
@@ -671,6 +676,7 @@ function switchScreen(name){
   if(name==='nutrition')loadNutrition();
   if(name==='stats'){loadSwimStats();renderRunPlan();}
   if(name==='dash')loadDashboard();
+  if(name==='goal')renderGoalScreen();
 }
 
 // ===== TODAY =====
@@ -1513,6 +1519,108 @@ function toast(msg,isErr=false){
   const t=document.getElementById('toast');
   t.textContent=msg;t.className='toast'+(isErr?' error':'');
   t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2800);
+}
+
+// ===== GOAL PLAN SCREEN =====
+function renderGoalScreen(){
+  const el = document.getElementById('goal-screen-content');
+  if(!el) return;
+
+  const raceDate = new Date(RACE_DATE);
+  const today = new Date();
+  const daysLeft = Math.ceil((raceDate - today) / 86400000);
+  const totalDays = 180; // approx training period
+  const progress = Math.max(0, Math.min(100, Math.round((1 - daysLeft/totalDays)*100)));
+
+  // Current week number
+  const weekMs = today - (raceDate - totalDays*86400000);
+  const currentWeekIdx = Math.max(0, Math.floor(weekMs / (7*86400000)));
+
+  // Race countdown hero
+  let html = `
+  <div style="background:linear-gradient(135deg,rgba(255,107,43,0.08),rgba(245,200,66,0.05));border:1px solid rgba(255,107,43,0.2);border-radius:22px;padding:20px;margin-bottom:12px;position:relative;overflow:hidden">
+    <div style="position:absolute;top:-30px;right:-30px;width:120px;height:120px;background:radial-gradient(circle,rgba(255,107,43,0.12),transparent 70%);pointer-events:none"></div>
+    <div style="font-size:10px;font-weight:600;letter-spacing:2.5px;text-transform:uppercase;color:var(--orange);margin-bottom:8px">🏁 Моя цель</div>
+    <div style="font-size:20px;font-weight:700;letter-spacing:-.3px;margin-bottom:14px">${RACE_NAME}</div>
+    <div style="display:flex;align-items:flex-end;gap:8px;margin-bottom:12px">
+      <div style="font-size:64px;font-weight:800;letter-spacing:-3px;line-height:1;color:var(--orange)">${daysLeft}</div>
+      <div style="padding-bottom:8px;color:var(--muted2);font-size:13px;letter-spacing:1px;text-transform:uppercase">дней</div>
+    </div>
+    <div style="background:rgba(255,255,255,0.05);border-radius:3px;height:4px;overflow:hidden;margin-bottom:6px">
+      <div style="width:${progress}%;height:100%;background:linear-gradient(90deg,var(--orange),var(--yellow));border-radius:3px;transition:width 1s"></div>
+    </div>
+    <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--muted2)">
+      <span>Подготовка: <span style="color:var(--orange)">${progress}%</span></span>
+      <span>${raceDate.toLocaleDateString('ru',{day:'numeric',month:'long',year:'numeric'})}</span>
+    </div>
+  </div>
+
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+    <div style="font-size:13px;font-weight:600;color:var(--text)">Беговой план</div>
+    <button onclick="openModal('plan-edit-modal')" style="background:rgba(184,255,61,0.08);border:1px solid rgba(184,255,61,0.2);border-radius:10px;padding:6px 12px;color:var(--green);font-size:12px;font-weight:600;cursor:pointer">✏️ Изменить</button>
+  </div>`;
+
+  // Weekly run plan cards
+  RUN_PLAN.forEach((w, idx) => {
+    const isCurrent = idx === currentWeekIdx;
+    const isPast = idx < currentWeekIdx;
+    const borderColor = isCurrent ? 'rgba(255,107,43,0.35)' : 'rgba(255,255,255,0.07)';
+    const bgColor = isCurrent ? 'rgba(255,107,43,0.06)' : isPast ? 'rgba(255,255,255,0.02)' : 'rgba(255,255,255,0.04)';
+    const weekLabel = isCurrent ? `<span style="font-size:9px;font-weight:700;background:var(--orange);color:#060a0e;padding:2px 7px;border-radius:6px;margin-left:6px;letter-spacing:.5px">СЕЙЧАС</span>` : '';
+    const pastStyle = isPast ? 'opacity:0.5' : '';
+
+    html += `<div style="background:${bgColor};border:1px solid ${borderColor};border-radius:18px;padding:16px;margin-bottom:8px;${pastStyle}">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+        <div style="font-size:13px;font-weight:600;color:var(--muted2)">${w.week}${weekLabel}</div>
+        <div style="font-size:20px;font-weight:800;letter-spacing:-.5px;color:var(--orange)">${w.total}</div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px">
+        <div style="background:rgba(255,255,255,0.04);border-radius:12px;padding:10px;text-align:center">
+          <div style="font-size:9px;font-weight:500;color:var(--muted2);margin-bottom:5px;text-transform:uppercase;letter-spacing:.8px">СБ</div>
+          <div style="font-size:17px;font-weight:800;letter-spacing:-.5px;color:var(--orange)">${w.sat}</div>
+          <div style="font-size:10px;color:var(--muted2);margin-top:3px">${w.satP}</div>
+        </div>
+        <div style="background:rgba(255,255,255,0.04);border-radius:12px;padding:10px;text-align:center">
+          <div style="font-size:9px;font-weight:500;color:var(--muted2);margin-bottom:5px;text-transform:uppercase;letter-spacing:.8px">ВС</div>
+          <div style="font-size:17px;font-weight:800;letter-spacing:-.5px;color:var(--yellow)">${w.sun}</div>
+          <div style="font-size:10px;color:var(--muted2);margin-top:3px">${w.sunP}</div>
+        </div>
+        <div style="background:rgba(255,255,255,0.04);border-radius:12px;padding:10px;text-align:center;display:flex;align-items:center;justify-content:center">
+          <div style="font-size:11px;color:var(--muted2);font-weight:500;text-align:center">${w.note}</div>
+        </div>
+      </div>
+    </div>`;
+  });
+
+  // Weekly plan (days)
+  html += `<div style="margin-top:16px;margin-bottom:8px">
+    <div style="display:flex;align-items:center;justify-content:space-between">
+      <div style="font-size:13px;font-weight:600">Недельный план</div>
+      <button onclick="openSetupWizard()" style="background:rgba(0,229,204,0.08);border:1px solid rgba(0,229,204,0.2);border-radius:10px;padding:6px 12px;color:var(--teal);font-size:12px;font-weight:600;cursor:pointer">🎯 Сменить цель</button>
+    </div>
+  </div>`;
+
+  const days = ['ВС','ПН','ВТ','СР','ЧТ','ПТ','СБ'];
+  const typeColors = {Swimming:'var(--blue)',Running:'var(--orange)',RunLong:'var(--yellow)',
+    Gym:'var(--teal)',GymB:'var(--teal)',Cycling:'var(--green)',Rest:'var(--muted)'};
+
+  html += `<div style="display:flex;flex-direction:column;gap:6px">`;
+  USER_PLAN.forEach((p, i) => {
+    const isToday = i === new Date().getDay();
+    const color = typeColors[p.type] || 'var(--muted)';
+    html += `<div style="display:flex;align-items:center;gap:12px;padding:12px 14px;background:${isToday?'rgba(184,255,61,0.06)':'rgba(255,255,255,0.03)'};border:1px solid ${isToday?'rgba(184,255,61,0.2)':'rgba(255,255,255,0.06)'};border-radius:14px">
+      <div style="font-size:12px;font-weight:700;color:var(--muted2);width:24px">${days[i]}</div>
+      <div style="font-size:18px">${p.icon}</div>
+      <div style="flex:1">
+        <div style="font-size:14px;font-weight:600;color:${color}">${p.label}</div>
+        ${p.detail?`<div style="font-size:11px;color:var(--muted2);margin-top:1px">${p.detail}</div>`:''}
+      </div>
+      ${isToday?`<div style="font-size:9px;font-weight:700;background:var(--green);color:#060a0e;padding:2px 7px;border-radius:6px">СЕГОДНЯ</div>`:''}
+    </div>`;
+  });
+  html += `</div>`;
+
+  el.innerHTML = html;
 }
 
 // ===== DASHBOARD =====
