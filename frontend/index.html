@@ -1683,8 +1683,12 @@ async function loadProfileScreen(){
   let profile = {};
   try { profile = await get('/api/auth/profile'); } catch(e){}
   const g = profile.goals || {};
-
   const nutritionEnabled = g.nutrition_enabled !== 'false';
+
+  // Race days left
+  const _raceDate = g.race_date || localStorage.getItem('race_date') || '2026-04-26';
+  const daysLeft = Math.ceil((new Date(_raceDate) - new Date()) / 86400000);
+  const _raceName = g.race_name || localStorage.getItem('race_name') || 'Полумарафон 21 км — 26 апреля';
 
   el.innerHTML = `
   <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
@@ -1814,7 +1818,7 @@ async function loadProfileScreen(){
   <div class="card" style="margin-bottom:10px">
     <div class="card-title">🏁 Текущая цель</div>
     <div style="background:linear-gradient(135deg,rgba(255,107,43,0.08),rgba(245,200,66,0.05));border:1px solid rgba(255,107,43,0.15);border-radius:14px;padding:14px;margin-bottom:12px">
-      <div style="font-size:16px;font-weight:700;margin-bottom:4px">${RACE_NAME}</div>
+      <div style="font-size:16px;font-weight:700;margin-bottom:4px">${_raceName}</div>
       <div style="font-size:12px;color:var(--orange)">${daysLeft > 0 ? daysLeft + ' дней осталось' : 'Гонка прошла'}</div>
     </div>
     <button onclick="openSetupWizard()" style="width:100%;padding:12px;border-radius:12px;background:linear-gradient(135deg,var(--orange),var(--yellow));border:none;color:#060a0e;font-size:14px;font-weight:700;cursor:pointer">🎯 Сменить цель и план</button>

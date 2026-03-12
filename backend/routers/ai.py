@@ -6,6 +6,55 @@ import requests, json, os
 
 router = APIRouter()
 
+# ============================================================
+# ATHLETE PROFILE — вшитые знания о пользователе
+# ============================================================
+def build_system_prompt(goals: dict = None, extra_context: str = "") -> str:
+    g = goals or {}
+    height = g.get("height_cm", "178")
+    weight = g.get("weight_kg", "—")
+    age    = g.get("age", "36")
+    gender = g.get("gender", "male")
+    cal_target  = g.get("calories_target", "2300")
+    prot_target = g.get("protein_target", "150")
+    steps_goal  = g.get("steps_target", "10000")
+    max_hr = g.get("max_hr_manual") or (220 - int(age)) if age else 184
+
+    return f"""Ты персональный AI-тренер приложения SmartFit. Ты хорошо знаешь своего спортсмена:
+
+ПРОФИЛЬ СПОРТСМЕНА:
+- Дмитрий, 36 лет, мужчина, Кишинёв (Молдова)
+- Рост: {height} см, Вес: {weight or '~78'} кг
+- Макс. ЧСС: ~{max_hr} уд/мин
+- Цель: Полумарафон 21 км — 26 апреля 2026 (подготовка идёт)
+
+СПОРТИВНЫЙ УРОВЕНЬ:
+- Бег: хороший уровень, рабочий темп 5:00–6:00 мин/км
+- Плавание: регулярные тренировки в бассейне (основной второй вид спорта)
+- Силовые: периодически (тренажёрки А и Б в плане)
+- Комбинированный спортсмен — совмещает бег + плавание
+
+КЛЮЧЕВЫЕ ИНТЕРЕСЫ (что важно для него):
+1. Восстановление и управление усталостью — как совмещать нагрузки без перетренированности
+2. Совмещение бега, плавания и силовых — оптимальное расписание
+3. Питание до/после тренировки — что есть, когда, сколько
+4. Темп и тактика на гонке — как бежать полумарафон (цель: ~2ч - 2ч 10мин)
+
+ЦЕЛИ ПИТАНИЯ:
+- Калории: {cal_target} ккал/день
+- Белок: {prot_target} г/день (приоритет — для восстановления)
+- Шаги: {steps_goal}/день
+
+СТИЛЬ ОТВЕТОВ:
+- Отвечай на русском языке (если пользователь не пишет на другом)
+- Будь конкретным: не "бегай больше", а "добавь 1 интервальную тренировку во вторник: 6×800м по 4:30/км"
+- Учитывай данные Garmin (HRV, сон, пульс) — если данные плохие, советуй восстановление
+- При вопросах о плавании: учитывай что это бассейн, стандартный 25м или 50м
+- Для расчёта пульсовых зон используй макс. ЧСС {max_hr}:
+  Z1 (восст): <{int(max_hr*0.6)} | Z2 (база): {int(max_hr*0.6)}-{int(max_hr*0.7)} | Z3: {int(max_hr*0.7)}-{int(max_hr*0.8)} | Z4: {int(max_hr*0.8)}-{int(max_hr*0.9)} | Z5: >{int(max_hr*0.9)}
+- Короткие ответы в чате (2-4 предложения), подробные для анализа недели
+{extra_context}"""
+
 def get_uid(user):
     return user["id"] if user else 0  # 0 = guest, no real data
 
@@ -196,23 +245,20 @@ def get_weekly_analysis(user=Depends(get_optional_user), db=Depends(get_db)):
     goals = {r["key"]: r["value"] for r in
              db.execute("SELECT key,value FROM goals WHERE user_id=?", (uid,)).fetchall()}
 
-    prompt = f"""Ты персональный AI-тренер. Дай краткий анализ недели спортсмена на русском языке.
+    system = build_system_prompt(goals)
+    user_msg = f"""Дай анализ тренировочной недели. Будь конкретным и мотивирующим, 3-4 предложения.
 
-Тренировки за 7 дней:
-{json.dumps([dict(w) for w in workouts], ensure_ascii=False)}
+Тренировки за 7 дней: {json.dumps([dict(w) for w in workouts], ensure_ascii=False)}
+Питание за 7 дней: {json.dumps([dict(n) for n in nutrition], ensure_ascii=False)}
 
-Питание за 7 дней:
-{json.dumps([dict(n) for n in nutrition], ensure_ascii=False)}
-
-Цели: {json.dumps(goals, ensure_ascii=False)}
-
-Дай анализ в 3-4 предложениях: что хорошо, что улучшить, конкретный совет на следующую неделю. Будь конкретным и мотивирующим."""
+Структура ответа: 1) Что было хорошо 2) Что улучшить 3) Конкретный совет на следующую неделю"""
 
     resp = requests.post("https://api.anthropic.com/v1/messages",
         headers={"x-api-key": api_key, "anthropic-version": "2023-06-01",
                  "content-type": "application/json"},
-        json={"model": "claude-haiku-4-5-20251001", "max_tokens": 400,
-              "messages": [{"role": "user", "content": prompt}]},
+        json={"model": "claude-haiku-4-5-20251001", "max_tokens": 500,
+              "system": system,
+              "messages": [{"role": "user", "content": user_msg}]},
         timeout=30)
     resp.raise_for_status()
     data = resp.json()
@@ -257,23 +303,22 @@ def get_daily_tip(user=Depends(get_optional_user), db=Depends(get_db)):
     ).fetchone()
     race_info = f"Цель: {plan['race_name']}, дата: {plan['race_date']}" if plan else "Цель не указана"
 
-    prompt = f"""Ты AI-тренер. Дай одну конкретную рекомендацию на сегодня. Только 1-2 предложения, без вступлений.
+    system = build_system_prompt(goals)
+    user_msg = f"""Дай одну конкретную рекомендацию на сегодня. 1-2 предложения, без вступлений типа "Привет" или "Конечно".
 
-Данные спортсмена:
-- Сон: {h.get('sleep_hours','?')}ч, HRV: {h.get('hrv','?')}, ЧСС покоя: {h.get('resting_hr','?')}
-- Вес: {h.get('weight_kg','?')} кг
-- Питание сегодня: {n.get('cal','0')} ккал, белок {n.get('prot','0')}г (цель: {goals.get('protein_target','150')}г)
+Данные сегодня:
+- Сон: {h.get('sleep_hours','?')}ч | HRV: {h.get('hrv','?')} мс | ЧСС покоя: {h.get('resting_hr','?')}
+- Белок сегодня: {n.get('prot','0')}г из {goals.get('protein_target','150')}г
 - Последние тренировки: {json.dumps([dict(w) for w in recent_workouts], ensure_ascii=False)}
-- {race_info}
-
-Рекомендация (1-2 предложения, конкретно что делать сегодня):"""
+- {race_info}"""
 
     try:
         resp = requests.post("https://api.anthropic.com/v1/messages",
             headers={"x-api-key": api_key, "anthropic-version": "2023-06-01",
                      "content-type": "application/json"},
-            json={"model": "claude-haiku-4-5-20251001", "max_tokens": 150,
-                  "messages": [{"role": "user", "content": prompt}]},
+            json={"model": "claude-haiku-4-5-20251001", "max_tokens": 180,
+                  "system": system,
+                  "messages": [{"role": "user", "content": user_msg}]},
             timeout=20)
         resp.raise_for_status()
         data = resp.json()
