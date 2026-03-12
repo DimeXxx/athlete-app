@@ -175,6 +175,42 @@ def do_sync(uid: int, email: str, password: str, days: int, db):
     db.commit()
     return synced, skipped, len(activities)
 
+@router.get("/debug-health")
+def debug_health(user=Depends(get_optional_user), db=Depends(get_db)):
+    """Debug: show raw Garmin health data for today and yesterday"""
+    ensure_garmin_table(db)
+    uid = get_uid(user)
+    saved = load_garmin_creds(uid, db)
+    if not saved:
+        raise HTTPException(400, "Garmin не подключён")
+    client = get_garmin_client(saved["email"], saved["password"])
+    results = {}
+    for d in [date.today().isoformat(), (date.today()-timedelta(days=1)).isoformat()]:
+        try:
+            summary = client.get_user_summary(d)
+            results[f"summary_{d}"] = {
+                "sleepingSeconds": summary.get("sleepingSeconds"),
+                "sleepTimeSeconds": summary.get("sleepTimeSeconds"),
+                "restingHeartRate": summary.get("restingHeartRate"),
+                "totalSteps": summary.get("totalSteps"),
+                "keys_available": list(summary.keys())[:20] if summary else []
+            }
+        except Exception as e:
+            results[f"summary_{d}"] = {"error": str(e)}
+        try:
+            hrv = client.get_hrv_data(d)
+            results[f"hrv_{d}"] = hrv.get("hrvSummary") if hrv else None
+        except Exception as e:
+            results[f"hrv_{d}"] = {"error": str(e)}
+        try:
+            sleep = client.get_sleep_data(d)
+            results[f"sleep_{d}"] = {
+                "dailySleepDTO": sleep.get("dailySleepDTO", {}) if sleep else None
+            }
+        except Exception as e:
+            results[f"sleep_{d}"] = {"error": str(e)}
+    return results
+
 @router.get("/status")
 def garmin_status(user=Depends(get_optional_user), db=Depends(get_db)):
     ensure_garmin_table(db)
