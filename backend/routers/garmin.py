@@ -71,6 +71,68 @@ TYPE_MAP = {
     "fitness_equipment": "FunctionalStrengthTraining",
 }
 
+def sync_health_metrics(uid: int, client, days: int, db):
+    """Sync sleep, HRV, weight, resting HR from Garmin daily summaries"""
+    end_date = date.today()
+    start_date = end_date - timedelta(days=min(days, 30))  # health metrics: last 30 days
+    synced = 0
+    check_date = start_date
+    while check_date <= end_date:
+        date_str = check_date.isoformat()
+        try:
+            summary = client.get_user_summary(date_str)
+            if not summary:
+                check_date += timedelta(days=1)
+                continue
+
+            sleep_h = None
+            if summary.get("sleepingSeconds"):
+                sleep_h = round(summary["sleepingSeconds"] / 3600, 1)
+            elif summary.get("sleepTimeSeconds"):
+                sleep_h = round(summary["sleepTimeSeconds"] / 3600, 1)
+
+            resting_hr = summary.get("restingHeartRate")
+            steps      = summary.get("totalSteps")
+            weight_kg  = None  # will try body composition below
+
+            # HRV — from HRV summary if available
+            hrv = None
+            try:
+                hrv_data = client.get_hrv_data(date_str)
+                if hrv_data and hrv_data.get("hrvSummary"):
+                    hrv = hrv_data["hrvSummary"].get("lastNight") or hrv_data["hrvSummary"].get("weeklyAvg")
+            except Exception:
+                pass
+
+            # Weight from body composition
+            try:
+                bc = client.get_body_composition(date_str, date_str)
+                if bc and bc.get("dateWeightList"):
+                    w = bc["dateWeightList"][0].get("weight")
+                    if w: weight_kg = round(w / 1000, 1)
+            except Exception:
+                pass
+
+            # Only update if we have at least something useful
+            if any(v is not None for v in [sleep_h, resting_hr, hrv, weight_kg, steps]):
+                db.execute("""
+                    INSERT INTO health_metrics (user_id, date, steps, resting_hr, sleep_hours, weight_kg, hrv)
+                    VALUES (?,?,?,?,?,?,?)
+                    ON CONFLICT(user_id, date) DO UPDATE SET
+                      steps      = COALESCE(excluded.steps, steps),
+                      resting_hr = COALESCE(excluded.resting_hr, resting_hr),
+                      sleep_hours= COALESCE(excluded.sleep_hours, sleep_hours),
+                      weight_kg  = COALESCE(excluded.weight_kg, weight_kg),
+                      hrv        = COALESCE(excluded.hrv, hrv)
+                """, (uid, date_str, steps, resting_hr, sleep_h, weight_kg, hrv))
+                db.commit()
+                synced += 1
+        except Exception:
+            pass
+        check_date += timedelta(days=1)
+    return synced
+
+
 def do_sync(uid: int, email: str, password: str, days: int, db):
     client = get_garmin_client(email, password)
     synced = skipped = 0
@@ -100,6 +162,13 @@ def do_sync(uid: int, email: str, password: str, days: int, db):
         """, (uid, act_date, activity_type, duration_min, distance_km, calories, avg_hr, garmin_id))
         db.commit()
         synced += 1
+
+    # Also sync health metrics (sleep, HRV, weight, resting HR)
+    try:
+        sync_health_metrics(uid, client, days, db)
+    except Exception:
+        pass
+
     # Update last sync time
     db.execute("UPDATE garmin_accounts SET last_sync=? WHERE user_id=?",
                (datetime.now().isoformat(), uid))
