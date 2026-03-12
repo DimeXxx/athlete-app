@@ -435,7 +435,7 @@ select option{background:#111820 !important;color:#dde8f2 !important}
   <button class="nav-btn" onclick="switchScreen('goal')" id="nav-goal"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>Цель</button>
   <button class="nav-btn" onclick="switchScreen('ai')" id="nav-ai"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 2a4 4 0 0 1 4 4v1h1a3 3 0 0 1 3 3v6a3 3 0 0 1-3 3H7a3 3 0 0 1-3-3V10a3 3 0 0 1 3-3h1V6a4 4 0 0 1 4-4z"/><circle cx="9" cy="13" r="1" fill="currentColor"/><circle cx="15" cy="13" r="1" fill="currentColor"/><path d="M9 17c.83.63 2 1 3 1s2.17-.37 3-1"/></svg>AI</button>
   <button class="nav-btn" onclick="switchScreen('nutrition')" id="nav-nutrition"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M18 8h1a4 4 0 0 1 0 8h-1"/><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/><line x1="6" y1="1" x2="6" y2="4"/><line x1="10" y1="1" x2="10" y2="4"/><line x1="14" y1="1" x2="14" y2="4"/></svg>Питание</button>
-  <button class="nav-btn" onclick="switchScreen('stats')" id="nav-stats"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>Прогресс</button>
+  <button class="nav-btn" onclick="switchScreen('hub')" id="nav-hub"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>Тренировки</button>
 </nav>
 
 <!-- AI TRAINER SCREEN -->
@@ -446,6 +446,11 @@ select option{background:#111820 !important;color:#dde8f2 !important}
 <!-- GOAL PLAN SCREEN -->
 <div class="screen" id="screen-goal">
   <div id="goal-screen-content"><div class="loading"><div class="spinner"></div></div></div>
+</div>
+
+<!-- TRAINING HUB SCREEN -->
+<div class="screen" id="screen-hub">
+  <div id="hub-content"><div class="loading"><div class="spinner"></div></div></div>
 </div>
 
 <!-- DASHBOARD SCREEN -->
@@ -684,6 +689,7 @@ function switchScreen(name){
   if(name==='dash')loadDashboard();
   if(name==='goal')renderGoalScreen();
   if(name==='ai')renderAIScreen();
+  if(name==='hub')loadTrainingHub();
 }
 
 // ===== TODAY =====
@@ -1526,6 +1532,137 @@ function toast(msg,isErr=false){
   const t=document.getElementById('toast');
   t.textContent=msg;t.className='toast'+(isErr?' error':'');
   t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2800);
+}
+
+// ===== TRAINING HUB =====
+const HUB_PERIODS = [{k:'week',l:'Неделя'},{k:'month',l:'Месяц'},{k:'3month',l:'3 мес'},{k:'year',l:'Год'}];
+let hubPeriod = 'month';
+
+async function loadTrainingHub(){
+  const el = document.getElementById('hub-content');
+  el.innerHTML = '<div class="loading"><div class="spinner"></div>Загрузка тренировок...</div>';
+
+  let data = {};
+  try { data = await get('/api/workouts/hub?period=' + hubPeriod); } catch(e) {}
+
+  const workouts = data.workouts || [];
+  const summary  = data.summary  || [];
+  const prev     = data.prev_stats || {};
+
+  const typeIcons = {Swimming:'🏊',Running:'🏃',RunLong:'🏃',
+    FunctionalStrengthTraining:'💪',Cycling:'🚴',Walking:'🚶',Other:'🏋️'};
+  const typeColors = {Swimming:'var(--blue)',Running:'var(--orange)',RunLong:'var(--yellow)',
+    FunctionalStrengthTraining:'var(--teal)',Cycling:'var(--green)',Walking:'var(--muted2)'};
+
+  // Period selector
+  let html = `
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+    <div style="font-size:32px;font-weight:800;letter-spacing:-1px">Тренировки</div>
+  </div>
+  <div class="toggle-row" style="margin-bottom:14px">
+    ${HUB_PERIODS.map(p=>`<button class="toggle-btn ${p.k===hubPeriod?'active':''}"
+      onclick="hubPeriod='${p.k}';loadTrainingHub()">${p.l}</button>`).join('')}
+  </div>`;
+
+  // Summary cards by type
+  if(summary.length > 0){
+    html += `<div style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-bottom:14px">`;
+    summary.forEach(s => {
+      const icon = typeIcons[s.type] || '🏋️';
+      const color = typeColors[s.type] || 'var(--muted2)';
+      const prevS = prev[s.type] || {};
+      const distDiff = prevS.avg_dist ? ((s.avg_dist - prevS.avg_dist)/prevS.avg_dist*100).toFixed(0) : null;
+      const hrDiff = prevS.avg_hr && s.avg_hr ? Math.round(s.avg_hr - prevS.avg_hr) : null;
+      html += `<div class="card" style="margin-bottom:0;position:relative;overflow:hidden">
+        <div style="position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,${color},transparent)"></div>
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+          <span style="font-size:20px">${icon}</span>
+          <span style="font-size:11px;font-weight:600;color:var(--muted2);text-transform:uppercase;letter-spacing:1px">${s.type}</span>
+        </div>
+        <div style="font-size:26px;font-weight:800;letter-spacing:-1px;color:${color}">${s.count}<span style="font-size:13px;font-weight:500;color:var(--muted2);margin-left:4px">тр.</span></div>
+        <div style="font-size:11px;color:var(--muted2);margin-top:4px">
+          ${s.total_km?s.total_km+' км · ':''}${s.total_min?Math.round(s.total_min/60)+'ч ':''} ${s.avg_hr?'♥ '+s.avg_hr:''}
+        </div>
+        ${hrDiff ? `<div style="font-size:10px;margin-top:4px;color:${hrDiff>3?'var(--red)':hrDiff<-3?'var(--green)':'var(--muted2)'}">
+          пульс ${hrDiff>0?'+':''}${hrDiff} vs прошлый период</div>` : ''}
+      </div>`;
+    });
+    html += `</div>`;
+  }
+
+  // Workout list
+  if(workouts.length === 0){
+    html += `<div style="text-align:center;padding:40px 20px;color:var(--muted2)">
+      <div style="font-size:40px;margin-bottom:12px">🏃</div>
+      <div style="font-size:15px">Нет тренировок за этот период</div>
+      <div style="font-size:12px;margin-top:6px">Синхронизируй Garmin в Прогрессе</div>
+    </div>`;
+  } else {
+    html += `<div style="font-size:11px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:var(--muted2);margin-bottom:10px">${workouts.length} тренировок</div>`;
+    let lastDate = '';
+    workouts.forEach(w => {
+      const icon = typeIcons[w.type] || '🏋️';
+      const color = typeColors[w.type] || 'var(--muted2)';
+      const dateObj = new Date(w.date);
+      const dateLabel = dateObj.toLocaleDateString('ru',{weekday:'short',day:'numeric',month:'short'});
+
+      // Date separator
+      if(w.date !== lastDate){
+        html += `<div style="font-size:11px;font-weight:600;color:var(--muted2);margin:12px 0 6px;letter-spacing:.5px">${dateLabel}</div>`;
+        lastDate = w.date;
+      }
+
+      // Stats chips
+      const chips = [
+        w.distance_km ? `<span>${w.distance_km} км</span>` : '',
+        w.duration_min ? `<span>${Math.round(w.duration_min)} мин</span>` : '',
+        w.avg_pace ? `<span>⏱ ${w.avg_pace}/км</span>` : '',
+        w.avg_hr ? `<span style="color:var(--red)">♥ ${w.avg_hr}</span>` : '',
+        w.avg_cadence ? `<span>👟 ${w.avg_cadence} шаг/м</span>` : '',
+        w.elevation_gain ? `<span>↑ ${w.elevation_gain}м</span>` : '',
+        w.calories ? `<span>🔥 ${w.calories}</span>` : '',
+      ].filter(Boolean).join('<span style="color:var(--muted);margin:0 3px">·</span>');
+
+      const hasAnalysis = !!w.ai_analysis;
+      const srcBadge = w.source==='garmin' ? `<span style="font-size:9px;color:var(--blue);background:rgba(61,139,255,0.1);padding:1px 6px;border-radius:4px">GARMIN</span>` : '';
+
+      html += `<div style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.07);border-radius:16px;padding:14px;margin-bottom:8px" id="workout-${w.id}">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+          <div style="font-size:22px">${icon}</div>
+          <div style="flex:1">
+            <div style="font-size:15px;font-weight:700;color:${color}">${w.type} ${srcBadge}</div>
+            <div style="font-size:11px;color:var(--muted2);margin-top:2px;display:flex;flex-wrap:wrap;gap:4px">${chips}</div>
+          </div>
+          <button onclick="analyzeWorkout(${w.id})" style="background:${hasAnalysis?'rgba(184,255,61,0.08)':'rgba(255,255,255,0.05)'};border:1px solid ${hasAnalysis?'rgba(184,255,61,0.2)':'rgba(255,255,255,0.08)'};border-radius:10px;padding:6px 10px;color:${hasAnalysis?'var(--green)':'var(--muted2)'};font-size:11px;font-weight:600;cursor:pointer;white-space:nowrap">
+            ${hasAnalysis ? '🤖 Разбор' : '+ AI'}
+          </button>
+        </div>
+        ${hasAnalysis ? `<div id="analysis-${w.id}" style="background:rgba(184,255,61,0.05);border-left:2px solid var(--green);border-radius:0 10px 10px 0;padding:10px 12px;font-size:12px;line-height:1.6;color:var(--text)">${w.ai_analysis}</div>` : `<div id="analysis-${w.id}"></div>`}
+      </div>`;
+    });
+  }
+
+  el.innerHTML = html;
+}
+
+async function analyzeWorkout(id){
+  const btn = event.target;
+  const analysisEl = document.getElementById('analysis-' + id);
+  btn.disabled = true;
+  btn.textContent = '⏳';
+  analysisEl.innerHTML = '<div style="color:var(--muted2);font-size:12px;padding:8px 0">🤖 Анализирую тренировку...</div>';
+  try {
+    const data = await post('/api/workouts/analyze/' + id, {});
+    analysisEl.innerHTML = `<div style="background:rgba(184,255,61,0.05);border-left:2px solid var(--green);border-radius:0 10px 10px 0;padding:10px 12px;font-size:12px;line-height:1.6;color:var(--text)">${data.analysis}</div>`;
+    btn.textContent = '🤖 Разбор';
+    btn.style.color = 'var(--green)';
+    btn.style.borderColor = 'rgba(184,255,61,0.2)';
+    btn.style.background = 'rgba(184,255,61,0.08)';
+  } catch(e) {
+    analysisEl.innerHTML = `<div style="color:var(--red);font-size:12px">${e.message}</div>`;
+    btn.textContent = '+ AI';
+  }
+  btn.disabled = false;
 }
 
 // ===== AI TRAINER SCREEN =====

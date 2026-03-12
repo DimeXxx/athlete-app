@@ -36,13 +36,29 @@ def init_db():
             distance_km REAL,
             calories INTEGER,
             avg_hr INTEGER,
+            max_hr INTEGER,
+            avg_cadence INTEGER,
+            elevation_gain REAL,
+            avg_pace TEXT,
             notes TEXT,
+            ai_analysis TEXT,
             source TEXT DEFAULT 'manual',
             garmin_id TEXT,
             created_at TEXT DEFAULT (datetime('now')),
             UNIQUE(user_id, garmin_id)
         )
     """)
+
+    # Migrate: add new columns if not exist
+    for col, typedef in [
+        ("max_hr", "INTEGER"), ("avg_cadence", "INTEGER"),
+        ("elevation_gain", "REAL"), ("avg_pace", "TEXT"), ("ai_analysis", "TEXT")
+    ]:
+        try:
+            c.execute(f"ALTER TABLE workouts ADD COLUMN {col} {typedef}")
+            conn.commit()
+        except Exception:
+            pass
 
     c.execute("""
         CREATE TABLE IF NOT EXISTS nutrition (

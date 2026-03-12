@@ -162,6 +162,16 @@ def do_sync(uid: int, email: str, password: str, days: int, db):
         distance_km = round(activity.get("distance", 0) / 1000, 2)
         calories = activity.get("calories", 0)
         avg_hr = activity.get("averageHR")
+        max_hr = activity.get("maxHR")
+        avg_cadence = activity.get("averageRunningCadenceInStepsPerMinute") or                       activity.get("averageBikingCadenceInRevPerMinute") or                       activity.get("averageSwimmingCadenceInStrokesPerMinute")
+        if avg_cadence: avg_cadence = round(avg_cadence)
+        elevation_gain = activity.get("elevationGain")
+        if elevation_gain: elevation_gain = round(elevation_gain, 1)
+        # Compute avg pace (min/km) for running
+        avg_pace = None
+        if distance_km and distance_km > 0 and duration_min and activity_type in ("Running", "RunLong"):
+            pace_secs = (duration_min * 60) / distance_km
+            avg_pace = f"{int(pace_secs//60)}:{int(pace_secs%60):02d}"
         existing = db.execute(
             "SELECT id FROM workouts WHERE user_id=? AND garmin_id=?", (uid, garmin_id)
         ).fetchone()
@@ -170,9 +180,11 @@ def do_sync(uid: int, email: str, password: str, days: int, db):
             continue
         db.execute("""
             INSERT INTO workouts
-            (user_id, date, type, duration_min, distance_km, calories, avg_hr, source, garmin_id)
-            VALUES (?, ?, ?, ?, ?, ?, ?, 'garmin', ?)
-        """, (uid, act_date, activity_type, duration_min, distance_km, calories, avg_hr, garmin_id))
+            (user_id, date, type, duration_min, distance_km, calories, avg_hr, max_hr,
+             avg_cadence, elevation_gain, avg_pace, source, garmin_id)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'garmin', ?)
+        """, (uid, act_date, activity_type, duration_min, distance_km, calories,
+              avg_hr, max_hr, avg_cadence, elevation_gain, avg_pace, garmin_id))
         db.commit()
         synced += 1
 
