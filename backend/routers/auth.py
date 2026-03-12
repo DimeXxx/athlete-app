@@ -106,3 +106,36 @@ def logout(user=Depends(get_current_user), db=Depends(get_db)):
     db.execute("UPDATE users SET token = NULL WHERE id = ?", (user["id"],))
     db.commit()
     return {"message": "Logged out"}
+
+
+@router.get("/profile")
+def get_profile(user=Depends(get_optional_user), db=Depends(get_db)):
+    if not user:
+        raise HTTPException(401, "Not authenticated")
+    uid = user["id"]
+    goals = {r["key"]: r["value"] for r in
+             db.execute("SELECT key,value FROM goals WHERE user_id=?", (uid,)).fetchall()}
+    return {
+        "id": uid, "name": user["name"], "email": user["email"],
+        "goals": goals
+    }
+
+@router.post("/profile")
+def update_profile(req: dict, user=Depends(get_optional_user), db=Depends(get_db)):
+    if not user:
+        raise HTTPException(401, "Not authenticated")
+    uid = user["id"]
+    # Update name
+    if "name" in req:
+        db.execute("UPDATE users SET name=? WHERE id=?", (req["name"], uid))
+    # Update goals/preferences
+    goal_keys = ["height_cm","weight_kg","age","gender","calories_target","protein_target",
+                 "steps_target","nutrition_enabled","weekly_workouts_target","max_hr_manual"]
+    for key in goal_keys:
+        if key in req:
+            db.execute("""
+                INSERT INTO goals (user_id, key, value) VALUES (?,?,?)
+                ON CONFLICT(user_id,key) DO UPDATE SET value=excluded.value
+            """, (uid, key, str(req[key])))
+    db.commit()
+    return {"message": "Профиль обновлён"}

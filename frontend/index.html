@@ -30,7 +30,7 @@ body::after{content:'';position:fixed;bottom:0;left:-80px;width:300px;height:300
 .nav-btn svg{width:21px;height:21px;stroke-width:1.6;transition:stroke .2s}
 
 /* SCREENS */
-.screen{display:none;padding:20px 16px 110px;max-width:480px;margin:0 auto;position:relative;z-index:1}
+.screen{display:none;padding:20px 16px 140px;max-width:480px;margin:0 auto;position:relative;z-index:1}
 .screen.active{display:block;animation:fadeUp .35s cubic-bezier(.22,.68,0,1.1) both}
 @keyframes fadeUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
 @keyframes spin{to{transform:rotate(360deg)}}
@@ -430,12 +430,20 @@ select option{background:#111820 !important;color:#dde8f2 !important}
   </div>
 </div>
 
-<nav class="nav">
-  <button class="nav-btn active" onclick="switchScreen('today')" id="nav-today"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>Сегодня</button>
-  <button class="nav-btn" onclick="switchScreen('hub')" id="nav-hub"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>Тренировки</button>
-  <button class="nav-btn" onclick="switchScreen('ai')" id="nav-ai"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 2a4 4 0 0 1 4 4v1h1a3 3 0 0 1 3 3v6a3 3 0 0 1-3 3H7a3 3 0 0 1-3-3V10a3 3 0 0 1 3-3h1V6a4 4 0 0 1 4-4z"/><circle cx="9" cy="13" r="1" fill="currentColor"/><circle cx="15" cy="13" r="1" fill="currentColor"/><path d="M9 17c.83.63 2 1 3 1s2.17-.37 3-1"/></svg>AI</button>
-  <button class="nav-btn" onclick="switchScreen('nutrition')" id="nav-nutrition"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M18 8h1a4 4 0 0 1 0 8h-1"/><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/><line x1="6" y1="1" x2="6" y2="4"/><line x1="10" y1="1" x2="10" y2="4"/><line x1="14" y1="1" x2="14" y2="4"/></svg>Питание</button>
-  <button class="nav-btn" onclick="switchScreen('stats')" id="nav-stats"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>Прогресс</button>
+<nav class="nav" style="flex-direction:column;padding:6px 0 calc(6px + env(safe-area-inset-bottom))">
+  <div style="display:flex;width:100%">
+    <button class="nav-btn active" onclick="switchScreen('today')" id="nav-today"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>Сегодня</button>
+    <button class="nav-btn" onclick="switchScreen('hub')" id="nav-hub"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>Тренировки</button>
+    <button class="nav-btn" onclick="switchScreen('ai')" id="nav-ai"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 2a4 4 0 0 1 4 4v1h1a3 3 0 0 1 3 3v6a3 3 0 0 1-3 3H7a3 3 0 0 1-3-3V10a3 3 0 0 1 3-3h1V6a4 4 0 0 1 4-4z"/><circle cx="9" cy="13" r="1" fill="currentColor"/><circle cx="15" cy="13" r="1" fill="currentColor"/><path d="M9 17c.83.63 2 1 3 1s2.17-.37 3-1"/></svg>AI</button>
+    <button class="nav-btn" onclick="switchScreen('goal')" id="nav-goal"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>Цель</button>
+    <button class="nav-btn" onclick="switchScreen('stats')" id="nav-stats"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>Прогресс</button>
+  </div>
+  <div style="display:flex;width:100%;border-top:1px solid rgba(255,255,255,0.04)">
+    <button class="nav-btn" onclick="switchScreen('nutrition')" id="nav-nutrition"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M18 8h1a4 4 0 0 1 0 8h-1"/><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/><line x1="6" y1="1" x2="6" y2="4"/><line x1="10" y1="1" x2="10" y2="4"/><line x1="14" y1="1" x2="14" y2="4"/></svg>Питание</button>
+    <button class="nav-btn" onclick="switchScreen('dash')" id="nav-dash"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="2" y="3" width="20" height="14" rx="2"/><polyline points="7 10 10 7 13 10 17 6"/></svg>Итоги</button>
+    <button class="nav-btn" onclick="switchScreen('plan')" id="nav-plan"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>План</button>
+    <button class="nav-btn" onclick="switchScreen('profile')" id="nav-profile"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>Профиль</button>
+  </div>
 </nav>
 
 <!-- AI TRAINER SCREEN -->
@@ -446,6 +454,11 @@ select option{background:#111820 !important;color:#dde8f2 !important}
 <!-- GOAL PLAN SCREEN -->
 <div class="screen" id="screen-goal">
   <div id="goal-screen-content"><div class="loading"><div class="spinner"></div></div></div>
+</div>
+
+<!-- PROFILE SCREEN -->
+<div class="screen" id="screen-profile">
+  <div id="profile-screen-content"><div class="loading"><div class="spinner"></div></div></div>
 </div>
 
 <!-- TRAINING HUB SCREEN -->
@@ -690,6 +703,7 @@ function switchScreen(name){
   if(name==='goal')renderGoalScreen();
   if(name==='ai')renderAIScreen();
   if(name==='hub')loadTrainingHub();
+  if(name==='profile')loadProfileScreen();
 }
 
 // ===== TODAY =====
@@ -1532,6 +1546,166 @@ function toast(msg,isErr=false){
   const t=document.getElementById('toast');
   t.textContent=msg;t.className='toast'+(isErr?' error':'');
   t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2800);
+}
+
+// ===== PROFILE SCREEN =====
+async function loadProfileScreen(){
+  const el = document.getElementById('profile-screen-content');
+  el.innerHTML = '<div class="loading"><div class="spinner"></div></div>';
+
+  let profile = {};
+  try { profile = await get('/api/auth/profile'); } catch(e){}
+  const g = profile.goals || {};
+
+  const nutritionEnabled = g.nutrition_enabled !== 'false';
+
+  el.innerHTML = `
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
+    <div style="font-size:32px;font-weight:800;letter-spacing:-1px">Профиль</div>
+    <div style="width:48px;height:48px;border-radius:50%;background:linear-gradient(135deg,var(--green),var(--teal));display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:800;color:#060a0e">
+      ${(profile.name||'?')[0].toUpperCase()}
+    </div>
+  </div>
+  <div style="font-size:13px;color:var(--muted2);margin-bottom:20px">${profile.email||''}</div>
+
+  <!-- Personal info -->
+  <div class="card" style="margin-bottom:10px">
+    <div class="card-title">👤 Личные данные</div>
+    <div class="input-group">
+      <label class="input-label">Имя</label>
+      <input class="input-field" id="pf-name" value="${profile.name||''}" placeholder="Твоё имя">
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+      <div class="input-group" style="margin-bottom:0">
+        <label class="input-label">Возраст</label>
+        <input class="input-field" id="pf-age" type="number" value="${g.age||''}" placeholder="36">
+      </div>
+      <div class="input-group" style="margin-bottom:0">
+        <label class="input-label">Пол</label>
+        <select class="input-field" id="pf-gender">
+          <option value="male" ${g.gender==='male'?'selected':''}>Мужской</option>
+          <option value="female" ${g.gender==='female'?'selected':''}>Женский</option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <!-- Body metrics -->
+  <div class="card" style="margin-bottom:10px">
+    <div class="card-title">📏 Параметры тела</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+      <div class="input-group" style="margin-bottom:0">
+        <label class="input-label">Рост (см)</label>
+        <input class="input-field" id="pf-height" type="number" value="${g.height_cm||''}" placeholder="178">
+      </div>
+      <div class="input-group" style="margin-bottom:0">
+        <label class="input-label">Вес (кг)</label>
+        <input class="input-field" id="pf-weight" type="number" step="0.1" value="${g.weight_kg||''}" placeholder="78.5">
+      </div>
+    </div>
+    <div class="input-group" style="margin-top:10px;margin-bottom:0">
+      <label class="input-label">Макс. ЧСС (если знаешь)</label>
+      <input class="input-field" id="pf-maxhr" type="number" value="${g.max_hr_manual||''}" placeholder="Авто: 220 − возраст">
+    </div>
+  </div>
+
+  <!-- Training targets -->
+  <div class="card" style="margin-bottom:10px">
+    <div class="card-title">🎯 Цели и нормы</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+      <div class="input-group" style="margin-bottom:0">
+        <label class="input-label">Калории/день</label>
+        <input class="input-field" id="pf-cal" type="number" value="${g.calories_target||2300}" placeholder="2300">
+      </div>
+      <div class="input-group" style="margin-bottom:0">
+        <label class="input-label">Белок (г/день)</label>
+        <input class="input-field" id="pf-prot" type="number" value="${g.protein_target||150}" placeholder="150">
+      </div>
+      <div class="input-group" style="margin-bottom:0">
+        <label class="input-label">Шаги/день</label>
+        <input class="input-field" id="pf-steps" type="number" value="${g.steps_target||10000}" placeholder="10000">
+      </div>
+      <div class="input-group" style="margin-bottom:0">
+        <label class="input-label">Тренировок/нед</label>
+        <input class="input-field" id="pf-workouts" type="number" value="${g.weekly_workouts_target||5}" placeholder="5">
+      </div>
+    </div>
+  </div>
+
+  <!-- Feature toggles -->
+  <div class="card" style="margin-bottom:10px">
+    <div class="card-title">⚙️ Функции</div>
+
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-bottom:1px solid var(--border)">
+      <div>
+        <div style="font-size:14px;font-weight:600">🍽️ Трекер питания</div>
+        <div style="font-size:11px;color:var(--muted2);margin-top:2px">Калории, белки, углеводы, жиры</div>
+      </div>
+      <div onclick="toggleNutrition(this)" id="nutrition-toggle"
+        style="width:48px;height:28px;border-radius:14px;background:${nutritionEnabled?'var(--green)':'rgba(255,255,255,0.1)'};cursor:pointer;position:relative;transition:background .3s">
+        <div style="width:22px;height:22px;border-radius:50%;background:white;position:absolute;top:3px;${nutritionEnabled?'right:3px':'left:3px'};transition:all .3s"></div>
+      </div>
+    </div>
+
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 0">
+      <div>
+        <div style="font-size:14px;font-weight:600">🔴 Сменить пароль</div>
+        <div style="font-size:11px;color:var(--muted2);margin-top:2px">${profile.email}</div>
+      </div>
+      <button onclick="doLogout()" style="background:rgba(255,68,85,0.1);border:1px solid rgba(255,68,85,0.2);border-radius:10px;padding:7px 14px;color:var(--red);font-size:12px;font-weight:600;cursor:pointer">Выйти</button>
+    </div>
+  </div>
+
+  <button onclick="saveProfile()" class="btn-primary" style="margin-top:4px">Сохранить профиль</button>
+  `;
+}
+
+function toggleNutrition(el){
+  const isOn = el.style.background.includes('var(--green)') || el.style.background.includes('b8ff3d');
+  const newVal = !isOn;
+  el.style.background = newVal ? 'var(--green)' : 'rgba(255,255,255,0.1)';
+  el.querySelector('div').style.cssText = `width:22px;height:22px;border-radius:50%;background:white;position:absolute;top:3px;${newVal?'right:3px':'left:3px'};transition:all .3s`;
+  el.dataset.value = newVal ? 'true' : 'false';
+
+  // Show/hide nutrition nav button
+  const navBtn = document.getElementById('nav-nutrition');
+  if(navBtn) navBtn.style.opacity = newVal ? '1' : '0.3';
+  localStorage.setItem('nutrition_enabled', newVal ? 'true' : 'false');
+}
+
+async function saveProfile(){
+  const btn = document.querySelector('#profile-screen-content .btn-primary');
+  btn.textContent = '⏳ Сохраняем...';
+  btn.disabled = true;
+
+  const toggle = document.getElementById('nutrition-toggle');
+  const nutritionEnabled = toggle ? (toggle.dataset.value !== 'false' &&
+    !toggle.style.background.includes('rgba(255,255,255')) : true;
+
+  try {
+    await post('/api/auth/profile', {
+      name:    document.getElementById('pf-name')?.value,
+      age:     document.getElementById('pf-age')?.value,
+      gender:  document.getElementById('pf-gender')?.value,
+      height_cm:  document.getElementById('pf-height')?.value,
+      weight_kg:  document.getElementById('pf-weight')?.value,
+      max_hr_manual: document.getElementById('pf-maxhr')?.value,
+      calories_target: document.getElementById('pf-cal')?.value,
+      protein_target:  document.getElementById('pf-prot')?.value,
+      steps_target:    document.getElementById('pf-steps')?.value,
+      weekly_workouts_target: document.getElementById('pf-workouts')?.value,
+      nutrition_enabled: nutritionEnabled ? 'true' : 'false',
+    });
+    toast('✅ Профиль сохранён!');
+    // Update name in header
+    if(CURRENT_USER && document.getElementById('pf-name')?.value){
+      CURRENT_USER.name = document.getElementById('pf-name').value;
+    }
+  } catch(e){
+    toast('Ошибка: ' + e.message, true);
+  }
+  btn.textContent = 'Сохранить профиль';
+  btn.disabled = false;
 }
 
 // ===== TRAINING HUB =====
