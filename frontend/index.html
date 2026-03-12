@@ -1154,7 +1154,7 @@ function openPlanEditor(){
   document.getElementById('plan-editor-rows').innerHTML=html;
 }
 
-function savePlan(){
+async function savePlan(){
   const raceName=document.getElementById('pe-race-name').value||'Гонка';
   const raceDate=document.getElementById('pe-race-date').value||'2026-04-26';
   const days=['ВС','ПН','ВТ','СР','ЧТ','ПТ','СБ'];
@@ -2497,7 +2497,7 @@ function selectLevel(val){
   },200);
 }
 
-function generatePlan(){
+async function generatePlan(){
   const hasSwim=document.getElementById('has-swim').checked;
   const hasGym=document.getElementById('has-gym').checked;
   const hasRun=document.getElementById('has-run').checked;
