@@ -129,11 +129,10 @@ def garmin_connect(creds: GarminCredentials, user=Depends(get_optional_user), db
     return {"message": f"Подключён как {name}! Данные сохранены.", "connected": True}
 
 @router.post("/sync")
-def garmin_sync(creds: Optional[GarminCredentials] = None, days: int = 14,
+def garmin_sync(creds: Optional[GarminCredentials] = None, days: int = 0,
                 user=Depends(get_optional_user), db=Depends(get_db)):
     ensure_garmin_table(db)
     uid = get_uid(user)
-    # Use saved creds if not provided
     if not creds or not creds.password:
         saved = load_garmin_creds(uid, db)
         if not saved:
@@ -142,6 +141,14 @@ def garmin_sync(creds: Optional[GarminCredentials] = None, days: int = 14,
     else:
         email, password = creds.email, creds.password
         save_garmin_creds(uid, email, password, db)
+
+    # First sync ever = load 2 years; repeat sync = load 30 days
+    if days == 0:
+        existing = db.execute(
+            "SELECT COUNT(*) FROM workouts WHERE user_id=? AND source='garmin'", (uid,)
+        ).fetchone()[0]
+        days = 730 if existing == 0 else 30
+
     synced, skipped, total = do_sync(uid, email, password, days, db)
     # Sync daily steps
     steps_synced = 0
