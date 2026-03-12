@@ -218,7 +218,41 @@ body{background:var(--bg);color:var(--text);font-family:var(--font-b);min-height
     <button class="toggle-btn" onclick="setTab('profile')">Профиль</button>
   </div>
   <div id="tab-run">
-    <div class="card"><div class="card-title">Бег — статистика Garmin</div><div id="run-stats"><div class="loading"><div class="spinner"></div></div></div></div>
+    <div class="card">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+        <div class="card-title" style="margin-bottom:0">Бег</div>
+        <select id="run-period" onchange="loadRunStats()" style="background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:6px 10px;color:var(--text);font-size:12px;outline:none">
+          <option value="week">7 дней</option>
+          <option value="month">30 дней</option>
+          <option value="3month">3 месяца</option>
+          <option value="6month">6 месяцев</option>
+          <option value="year">Год</option>
+          <option value="all" selected>Всё время</option>
+        </select>
+      </div>
+      <div id="run-stats"><div class="loading"><div class="spinner"></div></div></div>
+    </div>
+    <div class="card" id="history-card">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+        <div class="card-title" style="margin-bottom:0">История</div>
+        <div style="display:flex;gap:6px">
+          <select id="hist-period" onchange="loadHistory()" style="background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:6px 8px;color:var(--text);font-size:11px;outline:none">
+            <option value="week">7 дней</option>
+            <option value="month" selected>30 дней</option>
+            <option value="3month">3 мес</option>
+            <option value="year">Год</option>
+          </select>
+          <select id="hist-type" onchange="loadHistory()" style="background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:6px 8px;color:var(--text);font-size:11px;outline:none">
+            <option value="all">Все</option>
+            <option value="Swimming">🏊 Плавание</option>
+            <option value="Running">🏃 Бег</option>
+            <option value="FunctionalStrengthTraining">💪 Зал</option>
+            <option value="Cycling">🚴 Вело</option>
+          </select>
+        </div>
+      </div>
+      <div id="history-list"><div class="loading"><div class="spinner"></div></div></div>
+    </div>
     <div class="card"><div class="card-title">Подготовка к полумарафону</div><div id="run-plan"></div></div>
   </div>
   <div id="tab-ai" style="display:none">
@@ -239,11 +273,26 @@ body{background:var(--bg);color:var(--text);font-family:var(--font-b);min-height
     <div id="ai-loading" style="display:none" class="loading"><div class="spinner"></div>AI анализирует твои данные...</div>
   </div>
   <div id="tab-swim" style="display:none">
-    <div class="card"><div class="card-title">Плавание — статистика</div><div id="swim-stats"><div class="loading"><div class="spinner"></div></div></div></div>
     <div class="card">
-      <div class="card-title">Добавить тренировку</div>
-      <div class="input-group"><label class="input-label">Дистанция (м)</label><input class="input-field" id="sw-dist" type="number" placeholder="1500"></div>
-      <div class="input-group"><label class="input-label">Время (мин)</label><input class="input-field" id="sw-time" type="number" placeholder="35"></div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+        <div class="card-title" style="margin-bottom:0">Плавание</div>
+        <select id="swim-period" onchange="loadSwimStats()" style="background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:6px 10px;color:var(--text);font-size:12px;outline:none">
+          <option value="week">7 дней</option>
+          <option value="month">30 дней</option>
+          <option value="3month">3 месяца</option>
+          <option value="6month">6 месяцев</option>
+          <option value="year">Год</option>
+          <option value="all" selected>Всё время</option>
+        </select>
+      </div>
+      <div id="swim-stats"><div class="loading"><div class="spinner"></div></div></div>
+    </div>
+    <div class="card">
+      <div class="card-title">Добавить вручную</div>
+      <div class="input-row">
+        <div class="input-group"><label class="input-label">Дистанция (м)</label><input class="input-field" id="sw-dist" type="number" placeholder="1500"></div>
+        <div class="input-group"><label class="input-label">Время (мин)</label><input class="input-field" id="sw-time" type="number" placeholder="35"></div>
+      </div>
       <button class="btn-primary" onclick="logSwim()">ЗАПИСАТЬ</button>
     </div>
   </div>
@@ -703,15 +752,30 @@ async function saveGoals(){
 
 // ===== SWIM =====
 async function loadSwimStats(){
+  const period=document.getElementById('swim-period')?.value||'all';
+  document.getElementById('swim-stats').innerHTML='<div class="loading"><div class="spinner"></div></div>';
   try{
-    const data=await get('/api/workouts/swim/stats');
-    const total=data.total||{};
-    let html=`<div class="stat-row"><div style="color:var(--muted)">Всего тренировок</div><div style="font-family:var(--font-d);font-size:20px;font-weight:800;color:var(--blue)">${total.count||0}</div></div><div class="stat-row"><div style="color:var(--muted)">Км в бассейне</div><div style="font-family:var(--font-d);font-size:20px;font-weight:800;color:var(--blue)">${total.total_km||0}</div></div>`;
+    const data=await get('/api/workouts/swim/stats?period='+period);
+    const t=data.total||{};
+    let html=`<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px">
+      <div style="background:var(--bg3);border-radius:10px;padding:10px;text-align:center"><div style="font-family:var(--font-d);font-size:24px;font-weight:900;color:var(--blue)">${t.count||0}</div><div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px">Трен.</div></div>
+      <div style="background:var(--bg3);border-radius:10px;padding:10px;text-align:center"><div style="font-family:var(--font-d);font-size:24px;font-weight:900;color:var(--blue)">${t.total_km||0}</div><div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px">Км</div></div>
+      <div style="background:var(--bg3);border-radius:10px;padding:10px;text-align:center"><div style="font-family:var(--font-d);font-size:24px;font-weight:900;color:var(--blue)">${t.avg_m||0}</div><div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px">Ср. м</div></div>
+    </div>`;
+    if(t.best_m){html+=`<div style="display:flex;align-items:center;gap:8px;padding:8px 0;margin-bottom:8px;border-bottom:1px solid var(--border)"><span style="font-size:11px;color:var(--muted)">🏆 Рекорд:</span><span style="font-family:var(--font-d);font-size:16px;font-weight:800;color:var(--yellow)">${Math.round(t.best_m)} м</span></div>`;}
     if(data.sessions&&data.sessions.length>0){
-      html+='<div style="margin-top:12px">';
-      data.sessions.slice(0,5).forEach(s=>{html+=`<div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--border)"><div style="font-size:12px;color:var(--muted);width:60px">${s.date}</div><div style="font-family:var(--font-d);font-size:22px;font-weight:900;color:var(--blue)">${Math.round(s.distance_m||0)}<span style="font-size:11px;color:var(--muted)"> м</span></div><div style="margin-left:auto;font-size:12px;color:var(--muted)">${s.pace_per_100m||'—'} с/100м</div></div>`;});
-      html+='</div>';
-    }
+      data.sessions.forEach(s=>{
+        const dateStr=new Date(s.date).toLocaleDateString('ru',{day:'numeric',month:'short'});
+        html+=`<div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--border)">
+          <div style="font-size:11px;color:var(--muted);width:52px;flex-shrink:0">${dateStr}</div>
+          <div style="font-family:var(--font-d);font-size:20px;font-weight:900;color:var(--blue)">${Math.round(s.distance_m||0)}<span style="font-size:10px;color:var(--muted)"> м</span></div>
+          <div style="margin-left:auto;display:flex;flex-direction:column;align-items:flex-end;gap:1px">
+            <div style="font-size:11px;color:var(--muted)">${s.pace_per_100m||'—'} с/100м</div>
+            ${s.avg_hr?`<div style="font-size:10px;color:var(--red)">♥ ${s.avg_hr}</div>`:''}
+          </div>
+        </div>`;
+      });
+    } else { html+='<div style="color:var(--muted);font-size:13px;padding:12px 0;text-align:center">Нет тренировок за этот период</div>'; }
     document.getElementById('swim-stats').innerHTML=html;
   }catch(e){document.getElementById('swim-stats').innerHTML='<div style="color:var(--muted);font-size:13px">Нет данных</div>';}
 }
@@ -785,25 +849,79 @@ function setTab(name){
   ['run','swim','ai','garmin','profile'].forEach(t=>document.getElementById('tab-'+t).style.display=t===name?'block':'none');
   document.querySelectorAll('.toggle-btn').forEach((b,i)=>b.classList.toggle('active',['run','swim','ai','garmin','profile'][i]===name));
   if(name==='swim')loadSwimStats();
-  if(name==='run'){loadRunStats();renderRunPlan();}
+  if(name==='run'){loadRunStats();renderRunPlan();loadHistory();}
   if(name==='profile')renderProfile();
   if(name==='garmin')loadGarminStatus();
 }
 
 async function loadRunStats(){
+  const period=document.getElementById('run-period')?.value||'all';
   document.getElementById('run-stats').innerHTML='<div class="loading"><div class="spinner"></div></div>';
   try{
-    const data=await get('/api/workouts/run/stats');
-    const total=data.total||{};
-    let html=`<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:14px"><div style="background:var(--bg3);border-radius:10px;padding:12px;text-align:center"><div style="font-family:var(--font-d);font-size:26px;font-weight:900;color:var(--orange)">${total.count||0}</div><div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px">Пробежек</div></div><div style="background:var(--bg3);border-radius:10px;padding:12px;text-align:center"><div style="font-family:var(--font-d);font-size:26px;font-weight:900;color:var(--orange)">${total.total_km||0}</div><div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px">Км всего</div></div><div style="background:var(--bg3);border-radius:10px;padding:12px;text-align:center"><div style="font-family:var(--font-d);font-size:26px;font-weight:900;color:var(--orange)">${total.avg_km||0}</div><div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px">Средний</div></div></div>`;
+    const data=await get('/api/workouts/run/stats?period='+period);
+    const t=data.total||{};
+    let html=`<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px">
+      <div style="background:var(--bg3);border-radius:10px;padding:10px;text-align:center"><div style="font-family:var(--font-d);font-size:24px;font-weight:900;color:var(--orange)">${t.count||0}</div><div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px">Пробежек</div></div>
+      <div style="background:var(--bg3);border-radius:10px;padding:10px;text-align:center"><div style="font-family:var(--font-d);font-size:24px;font-weight:900;color:var(--orange)">${t.total_km||0}</div><div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px">Км</div></div>
+      <div style="background:var(--bg3);border-radius:10px;padding:10px;text-align:center"><div style="font-family:var(--font-d);font-size:24px;font-weight:900;color:var(--orange)">${t.avg_km||0}</div><div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px">Ср. км</div></div>
+    </div>`;
+    if(t.best_km){html+=`<div style="display:flex;align-items:center;gap:8px;padding:8px 0;margin-bottom:8px;border-bottom:1px solid var(--border)"><span style="font-size:11px;color:var(--muted)">🏆 Рекорд:</span><span style="font-family:var(--font-d);font-size:16px;font-weight:800;color:var(--yellow)">${t.best_km} км</span></div>`;}
     if(data.sessions&&data.sessions.length>0){
-      data.sessions.slice(0,8).forEach(s=>{
-        const pm=s.pace_per_km||0;const pace=pm?`${Math.floor(pm)}:${String(Math.round((pm%1)*60)).padStart(2,'0')} мин/км`:'—';
-        html+=`<div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--border)"><div style="font-size:11px;color:var(--muted);width:68px;flex-shrink:0">${s.date}</div><div style="font-family:var(--font-d);font-size:22px;font-weight:900;color:var(--orange)">${s.distance_km}<span style="font-size:11px;color:var(--muted)"> км</span></div><div style="margin-left:auto;font-size:11px;color:var(--muted)">${pace}</div></div>`;
+      data.sessions.forEach(s=>{
+        const pm=s.pace_per_km||0;
+        const pace=pm?`${Math.floor(pm)}:${String(Math.round((pm%1)*60)).padStart(2,'0')}/км`:'—';
+        const dateStr=new Date(s.date).toLocaleDateString('ru',{day:'numeric',month:'short'});
+        html+=`<div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--border)">
+          <div style="font-size:11px;color:var(--muted);width:52px;flex-shrink:0">${dateStr}</div>
+          <div style="font-family:var(--font-d);font-size:20px;font-weight:900;color:var(--orange)">${s.distance_km}<span style="font-size:10px;color:var(--muted)"> км</span></div>
+          <div style="margin-left:auto;display:flex;flex-direction:column;align-items:flex-end;gap:1px">
+            <div style="font-size:11px;color:var(--muted)">${pace}</div>
+            ${s.avg_hr?`<div style="font-size:10px;color:var(--red)">♥ ${s.avg_hr}</div>`:''}
+          </div>
+        </div>`;
       });
-    } else {html+='<div style="color:var(--muted);font-size:13px;padding:12px 0;text-align:center">Пробежек нет. Синхронизируй Garmin!</div>';}
+    } else { html+='<div style="color:var(--muted);font-size:13px;padding:12px 0;text-align:center">Пробежек нет за этот период</div>'; }
     document.getElementById('run-stats').innerHTML=html;
   }catch(e){document.getElementById('run-stats').innerHTML='<div style="color:var(--muted);font-size:13px">Нет данных</div>';}
+  loadHistory();
+}
+
+const TYPE_ICONS={'Swimming':'🏊','Running':'🏃','RunLong':'🏃','FunctionalStrengthTraining':'💪','Cycling':'🚴','Walking':'🚶','Other':'🏋️'};
+const TYPE_COLORS={'Swimming':'var(--blue)','Running':'var(--orange)','RunLong':'var(--yellow)','FunctionalStrengthTraining':'var(--aqua)','Cycling':'var(--green)'};
+
+async function loadHistory(){
+  const period=document.getElementById('hist-period')?.value||'month';
+  const type=document.getElementById('hist-type')?.value||'all';
+  const el=document.getElementById('history-list');
+  if(!el)return;
+  el.innerHTML='<div class="loading"><div class="spinner"></div></div>';
+  try{
+    const data=await get(`/api/workouts/history?period=${period}&type=${type}`);
+    if(!data.length){el.innerHTML='<div style="color:var(--muted);font-size:13px;padding:12px 0;text-align:center">Нет тренировок</div>';return;}
+    let html='';
+    data.forEach(w=>{
+      const icon=TYPE_ICONS[w.type]||'🏋️';
+      const color=TYPE_COLORS[w.type]||'var(--muted)';
+      const dateStr=new Date(w.date).toLocaleDateString('ru',{weekday:'short',day:'numeric',month:'short'});
+      const dist=w.distance_km?`${w.distance_km} км`:'';
+      const dur=w.duration_min?`${Math.round(w.duration_min)} мин`:'';
+      const cal=w.calories?`${w.calories} ккал`:'';
+      const details=[dist,dur,cal].filter(Boolean).join(' · ');
+      const src=w.source==='garmin'?'<span style="font-size:9px;color:var(--blue);background:rgba(59,158,255,0.1);padding:2px 6px;border-radius:4px">GARMIN</span>':'';
+      html+=`<div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--border)">
+        <div style="width:32px;height:32px;border-radius:8px;background:rgba(255,255,255,0.05);display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0">${icon}</div>
+        <div style="flex:1;min-width:0">
+          <div style="display:flex;align-items:center;gap:6px">
+            <div style="font-family:var(--font-d);font-size:15px;font-weight:800;color:${color}">${w.type}</div>
+            ${src}
+          </div>
+          <div style="font-size:11px;color:var(--muted);margin-top:2px">${dateStr}${details?' · '+details:''}</div>
+        </div>
+        ${w.avg_hr?`<div style="font-size:12px;color:var(--red);flex-shrink:0">♥ ${w.avg_hr}</div>`:''}
+      </div>`;
+    });
+    el.innerHTML=html;
+  }catch(e){el.innerHTML='<div style="color:var(--muted);font-size:13px">Ошибка загрузки</div>';}
 }
 
 async function loadAI(){
