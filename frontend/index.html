@@ -305,7 +305,6 @@ select option{background:#111820 !important;color:#dde8f2 !important}
       </div>
       <div id="history-list"><div class="loading"><div class="spinner"></div></div></div>
     </div>
-    <div class="card"><div class="card-title">Подготовка к полумарафону</div><div id="run-plan"></div></div>
   </div>
   <div id="tab-ai" style="display:none">
     <div class="card" style="background:linear-gradient(135deg,rgba(59,158,255,0.08),rgba(0,229,204,0.05));border-color:rgba(59,158,255,0.2)">
@@ -681,7 +680,7 @@ function switchScreen(name){
   document.getElementById('screen-'+name).classList.add('active');
   document.getElementById('nav-'+name).classList.add('active');
   if(name==='nutrition')loadNutrition();
-  if(name==='stats'){loadSwimStats();renderRunPlan();}
+  if(name==='stats'){loadSwimStats();}
   if(name==='dash')loadDashboard();
   if(name==='goal')renderGoalScreen();
   if(name==='ai')renderAIScreen();
@@ -1164,7 +1163,7 @@ function setTab(name){
   ['run','swim','steps','ai','garmin','profile'].forEach(t=>document.getElementById('tab-'+t).style.display=t===name?'block':'none');
   document.querySelectorAll('.toggle-btn').forEach((b,i)=>b.classList.toggle('active',['run','swim','steps','ai','garmin','profile'][i]===name));
   if(name==='swim')loadSwimStats();
-  if(name==='run'){loadRunStats();renderRunPlan();loadHistory();}
+  if(name==='run'){loadRunStats();loadHistory();}
   if(name==='profile')renderProfile();
   if(name==='garmin')loadGarminStatus();
   if(name==='steps')loadSteps();
