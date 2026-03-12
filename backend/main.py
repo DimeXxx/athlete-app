@@ -1,16 +1,48 @@
-from fastapi import FastAPI, HTTPException, Depends
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 from contextlib import asynccontextmanager
-import uvicorn
-from database import init_db
+import uvicorn, sqlite3, logging
+from database import init_db, DB_PATH, get_db
 from routers import workouts, nutrition, garmin, health, auth, ai
+from routers.garmin import do_sync, load_garmin_creds, ensure_garmin_table, decode_pwd
+
+logger = logging.getLogger(__name__)
+
+def auto_sync_job():
+    """Runs every 6 hours — syncs Garmin for all connected users"""
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        conn.row_factory = sqlite3.Row
+        ensure_garmin_table(conn)
+        rows = conn.execute("SELECT user_id, email, password_enc FROM garmin_accounts").fetchall()
+        for row in rows:
+            try:
+                pwd = decode_pwd(row["password_enc"])
+                synced, skipped, total = do_sync(row["user_id"], row["email"], pwd, 2, conn)
+                logger.info(f"Auto-sync user {row['user_id']}: {synced} new workouts")
+            except Exception as e:
+                logger.error(f"Auto-sync failed for user {row['user_id']}: {e}")
+        conn.close()
+    except Exception as e:
+        logger.error(f"Auto-sync job error: {e}")
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     init_db()
-    yield
+    # Start background scheduler
+    try:
+        from apscheduler.schedulers.background import BackgroundScheduler
+        scheduler = BackgroundScheduler()
+        scheduler.add_job(auto_sync_job, 'interval', hours=6, id='garmin_sync')
+        scheduler.start()
+        logger.info("✅ Auto-sync scheduler started (every 6h)")
+        yield
+        scheduler.shutdown()
+    except Exception as e:
+        logger.error(f"Scheduler error: {e}")
+        yield
 
 app = FastAPI(title="Athlete App API", lifespan=lifespan)
 
@@ -28,7 +60,6 @@ app.include_router(nutrition.router, prefix="/api/nutrition", tags=["nutrition"]
 app.include_router(garmin.router, prefix="/api/garmin", tags=["garmin"])
 app.include_router(health.router, prefix="/api/health", tags=["health"])
 
-# Serve frontend
 app.mount("/static", StaticFiles(directory="../frontend"), name="static")
 
 @app.get("/")

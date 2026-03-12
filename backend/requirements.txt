@@ -5,3 +5,4 @@ garminconnect==0.2.22
 python-multipart==0.0.12
 httpx>=0.25.0
 requests>=2.31.0
+apscheduler==3.10.4
