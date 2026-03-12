@@ -147,7 +147,18 @@ def garmin_sync(creds: Optional[GarminCredentials] = None, days: int = 0,
         existing = db.execute(
             "SELECT COUNT(*) FROM workouts WHERE user_id=? AND source='garmin'", (uid,)
         ).fetchone()[0]
-        days = 730 if existing == 0 else 30
+        # Check oldest record - if less than 1 year of data, load 2 years
+        oldest = db.execute(
+            "SELECT MIN(date) FROM workouts WHERE user_id=? AND source='garmin'", (uid,)
+        ).fetchone()[0]
+        if not oldest:
+            days = 730  # No data - load 2 years
+        else:
+            from datetime import date as _date
+            oldest_date = _date.fromisoformat(oldest)
+            days_of_data = (_date.today() - oldest_date).days
+            days = 730 if days_of_data < 365 else 30  # Less than 1yr? load 2yrs
+
 
     synced, skipped, total = do_sync(uid, email, password, days, db)
     # Sync daily steps — try multiple Garmin API methods
@@ -201,6 +212,24 @@ def garmin_sync(creds: Optional[GarminCredentials] = None, days: int = 0,
 
     return {"message": "Синхронизация завершена!", "synced": synced, "skipped": skipped,
             "total": total, "steps_synced": steps_synced}
+
+@router.post("/full-sync")
+def full_sync(creds: Optional[GarminCredentials] = None,
+              user=Depends(get_optional_user), db=Depends(get_db)):
+    """Force full 2-year history reload"""
+    ensure_garmin_table(db)
+    uid = get_uid(user)
+    if not creds or not creds.password:
+        saved = load_garmin_creds(uid, db)
+        if not saved:
+            raise HTTPException(400, "Garmin не подключён")
+        email, password = saved["email"], saved["password"]
+    else:
+        email, password = creds.email, creds.password
+        save_garmin_creds(uid, email, password, db)
+    synced, skipped, total = do_sync(uid, email, password, 730, db)
+    return {"message": "Полная история загружена!", "synced": synced,
+            "skipped": skipped, "total": total, "days_loaded": 730}
 
 @router.post("/sync-steps")
 def sync_steps_only(creds: Optional[GarminCredentials] = None, days: int = 90,

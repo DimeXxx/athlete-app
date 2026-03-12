@@ -406,6 +406,10 @@ body::after{content:'';position:fixed;bottom:0;left:-80px;width:300px;height:300
         <button onclick="garminSync()" id="g-sync-btn" style="padding:12px 20px;background:rgba(0,229,204,.15);border:1px solid rgba(0,229,204,.3);border-radius:10px;color:var(--aqua);font-family:var(--font-d);font-size:15px;font-weight:700;cursor:pointer">🔄 Синхронизировать</button>
       </div>
       <div id="g-result" style="margin-top:12px;font-size:13px;color:var(--muted)"></div>
+      <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border)">
+        <div style="font-size:11px;color:var(--muted2);margin-bottom:8px">Нет старых тренировок? Загрузи полную историю:</div>
+        <button class="btn-secondary" onclick="fullSyncGarmin()" id="full-sync-btn" style="margin-top:0">📚 ЗАГРУЗИТЬ ВСЮ ИСТОРИЮ (2 ГОДА)</button>
+      </div>
     </div>
   </div>
   <div id="tab-profile" style="display:none">
@@ -1120,6 +1124,26 @@ async function loadSteps(){
     }
     el.innerHTML=html;
   }catch(e){el.innerHTML='<div style="color:var(--muted);font-size:13px">Нет данных</div>';}
+}
+
+async function fullSyncGarmin(){
+  const btn = document.getElementById('full-sync-btn');
+  const result = document.getElementById('g-result');
+  btn.disabled = true;
+  btn.textContent = '⏳ Загружаем 2 года... (1-2 мин)';
+  result.innerHTML = '<div style="color:var(--muted2)">⏳ Загружаем всю историю из Garmin... это займёт 1-2 минуты</div>';
+  try{
+    const r = await post('/api/garmin/full-sync', {email:'',password:''});
+    result.innerHTML = `<div style="color:var(--green)">✅ Готово! ${r.synced} новых тренировок за 2 года</div>`;
+    toast(`✅ ${r.synced} тренировок загружено!`);
+    loadRunStats();
+    loadSwimStats();
+  }catch(e){
+    result.innerHTML = `<div style="color:var(--red)">❌ ${e.message}</div>`;
+    toast('Ошибка синхронизации', true);
+  }
+  btn.disabled = false;
+  btn.textContent = '📚 ЗАГРУЗИТЬ ВСЮ ИСТОРИЮ (2 ГОДА)';
 }
 
 async function syncSteps(){
