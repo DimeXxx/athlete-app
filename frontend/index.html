@@ -7,42 +7,24 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#08090d">
 <title>ATHLETE</title>
-<link rel="apple-touch-icon" href="/static/icon.png">
 <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800;900&family=Barlow:wght@300;400;500;600&display=swap" rel="stylesheet">
 <style>
-:root {
-  --bg:#08090d; --bg2:#0e1018; --bg3:#141720; --card:#0e1118;
-  --border:rgba(255,255,255,0.07); --blue:#3b9eff; --aqua:#00e5cc;
-  --orange:#ff6b2b; --yellow:#ffd440; --green:#00e676; --red:#ff4757;
-  --text:#e8eaf0; --muted:#5a6070;
-  --font-d:'Barlow Condensed',sans-serif; --font-b:'Barlow',sans-serif;
-}
+:root{--bg:#08090d;--bg2:#0e1018;--bg3:#141720;--card:#0e1118;--border:rgba(255,255,255,0.07);--blue:#3b9eff;--aqua:#00e5cc;--orange:#ff6b2b;--yellow:#ffd440;--green:#00e676;--red:#ff4757;--text:#e8eaf0;--muted:#5a6070;--font-d:'Barlow Condensed',sans-serif;--font-b:'Barlow',sans-serif;}
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 body{background:var(--bg);color:var(--text);font-family:var(--font-b);min-height:100vh;overflow-x:hidden}
-
-/* NAV */
 .nav{position:fixed;bottom:0;left:0;right:0;background:rgba(8,9,13,0.97);backdrop-filter:blur(20px);border-top:1px solid var(--border);display:flex;z-index:100;padding-bottom:env(safe-area-inset-bottom)}
 .nav-btn{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;padding:12px 8px;cursor:pointer;border:none;background:none;color:var(--muted);font-family:var(--font-b);font-size:10px;letter-spacing:.5px;text-transform:uppercase;transition:color .2s}
 .nav-btn.active{color:var(--aqua)}
 .nav-btn svg{width:22px;height:22px}
-
-/* SCREENS */
 .screen{display:none;padding:24px 16px 100px;max-width:480px;margin:0 auto}
 .screen.active{display:block}
-
-/* CARDS */
 .card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:20px;margin-bottom:12px}
 .card-title{font-family:var(--font-d);font-size:13px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:14px}
-
-/* KPI */
 .kpi-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px}
 .kpi{background:var(--bg3);border:1px solid var(--border);border-radius:14px;padding:16px;position:relative;overflow:hidden}
 .kpi::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:var(--accent,var(--aqua))}
 .kpi-label{font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:8px}
 .kpi-value{font-family:var(--font-d);font-size:28px;font-weight:900;line-height:1;color:var(--accent,var(--aqua))}
-.kpi-unit{font-size:11px;color:var(--muted);margin-top:3px}
-
-/* WORKOUT BLOCK */
 .workout-block{background:var(--bg3);border-radius:14px;padding:16px;margin-bottom:8px;border:1px solid var(--border);display:flex;align-items:center;gap:14px;cursor:pointer;transition:border-color .2s}
 .workout-block.done{border-color:var(--green);background:rgba(0,230,118,0.05)}
 .wb-icon{width:44px;height:44px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0}
@@ -51,48 +33,27 @@ body{background:var(--bg);color:var(--text);font-family:var(--font-b);min-height
 .wb-detail{font-size:12px;color:var(--muted);margin-top:2px}
 .wb-check{width:26px;height:26px;border-radius:50%;border:2px solid var(--border);display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all .2s}
 .workout-block.done .wb-check{background:var(--green);border-color:var(--green);color:#000}
-
-/* COUNTDOWN */
 .countdown-card{background:linear-gradient(135deg,rgba(255,107,43,.12),rgba(255,212,64,.08));border:1px solid rgba(255,107,43,.25);border-radius:16px;padding:20px;margin-bottom:12px}
-.cd-label{font-size:11px;letter-spacing:2px;text-transform:uppercase;color:var(--orange);margin-bottom:6px}
-.cd-title{font-family:var(--font-d);font-size:20px;font-weight:900;margin-bottom:10px}
 .cd-num{font-family:var(--font-d);font-size:60px;font-weight:900;color:var(--orange);line-height:1}
 .cd-bar-wrap{background:rgba(255,255,255,.05);border-radius:4px;height:6px;overflow:hidden;margin-top:10px}
 .cd-bar{height:100%;background:linear-gradient(90deg,var(--orange),var(--yellow));border-radius:4px;transition:width 1s}
-
-/* MACRO */
 .macro-row{display:flex;gap:8px;margin-bottom:12px}
 .macro-card{flex:1;background:var(--bg3);border:1px solid var(--border);border-radius:12px;padding:12px;text-align:center}
 .macro-val{font-family:var(--font-d);font-size:24px;font-weight:900;line-height:1}
 .macro-label{font-size:10px;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-top:3px}
 .macro-bar{margin-top:6px;background:rgba(255,255,255,.05);border-radius:3px;height:4px;overflow:hidden}
 .macro-fill{height:100%;border-radius:3px;transition:width .5s}
-
-/* RING */
 .cal-ring-wrap{display:flex;align-items:center;gap:20px;padding:8px 0}
 .ring-val{font-family:var(--font-d);font-size:44px;font-weight:900;line-height:1;color:var(--yellow)}
-
-/* FOOD */
 .food-item{display:flex;align-items:center;justify-content:space-between;padding:11px 0;border-bottom:1px solid var(--border)}
 .food-item:last-child{border-bottom:none}
 .food-name{font-size:14px;font-weight:500}
 .food-macros{font-size:11px;color:var(--muted);margin-top:1px}
 .food-cal{font-family:var(--font-d);font-size:20px;font-weight:800;color:var(--yellow)}
 .food-del{background:none;border:none;color:var(--muted);cursor:pointer;font-size:18px;padding:4px;margin-left:6px}
-
-/* GARMIN */
-.garmin-status{display:flex;align-items:center;gap:10px;padding:12px 0}
-.g-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
-.g-dot.on{background:var(--green);box-shadow:0 0 8px var(--green)}
-.g-dot.off{background:var(--muted)}
-.sync-btn{padding:12px 20px;background:rgba(59,158,255,.15);border:1px solid rgba(59,158,255,.3);border-radius:10px;color:var(--blue);font-family:var(--font-d);font-size:15px;font-weight:700;cursor:pointer;transition:all .2s;letter-spacing:.5px}
-.sync-btn:hover{background:rgba(59,158,255,.25)}
-.sync-btn:disabled{opacity:.5;cursor:not-allowed}
-
-/* MODAL */
 .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:200;display:none;align-items:flex-end;justify-content:center;backdrop-filter:blur(4px)}
 .modal-overlay.open{display:flex}
-.modal{background:var(--bg2);border:1px solid var(--border);border-radius:24px 24px 0 0;padding:24px 20px 40px;width:100%;max-width:480px;animation:slideUp .3s ease}
+.modal{background:var(--bg2);border:1px solid var(--border);border-radius:24px 24px 0 0;padding:24px 20px 40px;width:100%;max-width:480px;animation:slideUp .3s ease;max-height:90vh;overflow-y:auto}
 @keyframes slideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
 .modal-handle{width:40px;height:4px;background:var(--border);border-radius:2px;margin:0 auto 20px}
 .modal-title{font-family:var(--font-d);font-size:24px;font-weight:900;margin-bottom:20px}
@@ -103,51 +64,84 @@ body{background:var(--bg);color:var(--text);font-family:var(--font-b);min-height
 .input-row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .btn-primary{width:100%;padding:15px;border-radius:12px;background:linear-gradient(135deg,var(--aqua),var(--blue));border:none;color:#08090d;font-family:var(--font-d);font-size:17px;font-weight:900;letter-spacing:1px;cursor:pointer;margin-top:8px;transition:opacity .2s}
 .btn-primary:hover{opacity:.9}
+.btn-secondary{width:100%;padding:13px;border-radius:12px;background:transparent;border:1px solid var(--border);color:var(--muted);font-family:var(--font-d);font-size:15px;font-weight:700;cursor:pointer;margin-top:8px}
 .add-btn{width:100%;padding:13px;border-radius:10px;background:rgba(0,229,204,.1);border:1px dashed rgba(0,229,204,.3);color:var(--aqua);font-family:var(--font-d);font-size:15px;font-weight:700;cursor:pointer;transition:all .2s;text-transform:uppercase;letter-spacing:.5px}
-.add-btn:hover{background:rgba(0,229,204,.18)}
-
-/* TOAST */
 .toast{position:fixed;top:20px;left:50%;transform:translateX(-50%);background:var(--green);color:#000;padding:10px 22px;border-radius:30px;font-family:var(--font-d);font-size:15px;font-weight:800;z-index:300;opacity:0;transition:opacity .3s;pointer-events:none;white-space:nowrap}
 .toast.show{opacity:1}
 .toast.error{background:var(--red);color:white}
-
-/* LOADING */
 .loading{display:flex;align-items:center;justify-content:center;gap:8px;padding:20px;color:var(--muted);font-size:13px}
 .spinner{width:16px;height:16px;border:2px solid var(--border);border-top-color:var(--aqua);border-radius:50%;animation:spin .7s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
-
-/* STAT ROW */
 .stat-row{display:flex;align-items:center;justify-content:space-between;padding:11px 0;border-bottom:1px solid var(--border)}
 .stat-row:last-child{border-bottom:none}
-.stat-label{font-size:14px;color:var(--muted)}
-.stat-val{font-family:var(--font-d);font-size:20px;font-weight:800}
-
-/* WEEK GRID */
 .week-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:5px;margin-bottom:16px}
 .week-day{display:flex;flex-direction:column;align-items:center;gap:3px;padding:8px 4px;border-radius:10px;border:1px solid transparent}
 .week-day.today{background:var(--bg3);border-color:var(--aqua)}
 .week-day-name{font-size:9px;color:var(--muted);letter-spacing:1px;text-transform:uppercase}
 .week-day-num{font-family:var(--font-d);font-size:17px;font-weight:800}
 .week-day-dot{width:6px;height:6px;border-radius:50%}
-
 .day-type{font-size:13px;font-weight:600;padding:4px 12px;border-radius:20px;display:inline-block;margin-bottom:18px}
 .day-type.swim{background:rgba(59,158,255,.15);color:var(--blue)}
 .day-type.run{background:rgba(255,107,43,.15);color:var(--orange)}
 .day-type.gym{background:rgba(0,229,204,.15);color:var(--aqua)}
 .day-type.runlong{background:rgba(255,212,64,.15);color:var(--yellow)}
-.day-type.rest{background:rgba(90,96,112,.15);color:var(--muted)}
-
-/* TOGGLE */
 .toggle-row{display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap}
 .toggle-btn{padding:7px 16px;border-radius:20px;border:1px solid var(--border);background:none;color:var(--muted);font-family:var(--font-b);font-size:13px;cursor:pointer;transition:all .2s}
 .toggle-btn.active{background:var(--bg3);border-color:var(--aqua);color:var(--aqua)}
-
 .screen-title{font-family:var(--font-d);font-size:36px;font-weight:900;letter-spacing:-.5px;line-height:1}
 .screen-sub{color:var(--muted);font-size:13px;margin-top:4px;margin-bottom:20px}
+/* AUTH */
+.auth-wrap{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px;background:var(--bg)}
+.auth-logo{font-family:var(--font-d);font-size:56px;font-weight:900;color:var(--aqua);letter-spacing:-2px;margin-bottom:8px}
+.auth-sub{color:var(--muted);font-size:14px;margin-bottom:40px;text-align:center}
+.auth-box{width:100%;max-width:360px}
+.auth-tabs{display:flex;gap:0;margin-bottom:24px;border:1px solid var(--border);border-radius:12px;overflow:hidden}
+.auth-tab{flex:1;padding:12px;border:none;background:none;color:var(--muted);font-family:var(--font-d);font-size:16px;font-weight:700;cursor:pointer;transition:all .2s}
+.auth-tab.active{background:var(--bg3);color:var(--aqua)}
+/* USER BADGE */
+.user-badge{display:flex;align-items:center;gap:10px;padding:12px 16px;background:var(--bg3);border:1px solid var(--border);border-radius:12px;margin-bottom:16px}
+.user-avatar{width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,var(--aqua),var(--blue));display:flex;align-items:center;justify-content:center;font-family:var(--font-d);font-size:16px;font-weight:900;color:#08090d;flex-shrink:0}
+.user-name{font-size:14px;font-weight:600}
+.user-email{font-size:11px;color:var(--muted)}
+.logout-btn{margin-left:auto;background:none;border:1px solid var(--border);color:var(--muted);padding:6px 12px;border-radius:8px;font-family:var(--font-b);font-size:12px;cursor:pointer}
+/* PLAN EDITOR */
+.plan-day-row{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border)}
+.plan-day-label{font-family:var(--font-d);font-size:16px;font-weight:800;width:36px;flex-shrink:0;color:var(--muted)}
+.plan-day-input{flex:1;background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:8px 12px;color:var(--text);font-family:var(--font-b);font-size:13px;outline:none}
+.plan-day-input:focus{border-color:var(--aqua)}
 </style>
 </head>
 <body>
 <div class="toast" id="toast"></div>
+
+<!-- AUTH SCREEN -->
+<div id="auth-screen" class="auth-wrap" style="display:none">
+  <div class="auth-logo">ATHLETE</div>
+  <div class="auth-sub">Твой персональный AI-тренер</div>
+  <div class="auth-box">
+    <div class="auth-tabs">
+      <button class="auth-tab active" onclick="authTab('login')">Войти</button>
+      <button class="auth-tab" onclick="authTab('register')">Создать аккаунт</button>
+    </div>
+    <div id="login-form">
+      <div class="input-group"><label class="input-label">Email</label><input class="input-field" id="l-email" type="email" placeholder="your@email.com"></div>
+      <div class="input-group"><label class="input-label">Пароль</label><input class="input-field" id="l-pass" type="password" placeholder="••••••••"></div>
+      <button class="btn-primary" onclick="doLogin()">ВОЙТИ</button>
+    </div>
+    <div id="register-form" style="display:none">
+      <div class="input-group"><label class="input-label">Имя</label><input class="input-field" id="r-name" type="text" placeholder="Дмитрий"></div>
+      <div class="input-group"><label class="input-label">Email</label><input class="input-field" id="r-email" type="email" placeholder="your@email.com"></div>
+      <div class="input-group"><label class="input-label">Пароль</label><input class="input-field" id="r-pass" type="password" placeholder="Минимум 6 символов"></div>
+      <button class="btn-primary" onclick="doRegister()">СОЗДАТЬ АККАУНТ</button>
+    </div>
+    <div style="text-align:center;margin-top:16px">
+      <button onclick="continueAsGuest()" style="background:none;border:none;color:var(--muted);font-size:13px;cursor:pointer;text-decoration:underline">Продолжить без аккаунта</button>
+    </div>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="app" style="display:none">
 
 <!-- TODAY -->
 <div class="screen active" id="screen-today">
@@ -156,11 +150,14 @@ body{background:var(--bg);color:var(--text);font-family:var(--font-b);min-height
 
 <!-- PLAN -->
 <div class="screen" id="screen-plan">
-  <div class="screen-title">ПЛАН</div>
+  <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:4px">
+    <div class="screen-title">ПЛАН</div>
+    <button onclick="openModal('plan-edit-modal')" style="background:var(--bg3);border:1px solid var(--border);color:var(--aqua);padding:8px 14px;border-radius:10px;font-family:var(--font-d);font-size:14px;font-weight:700;cursor:pointer;margin-top:4px">✏️ Изменить</button>
+  </div>
   <div class="screen-sub">Расписание и цели</div>
   <div class="countdown-card">
-    <div class="cd-label">Цель</div>
-    <div class="cd-title">Полумарафон 21 км — 26 апреля</div>
+    <div style="font-size:11px;letter-spacing:2px;text-transform:uppercase;color:var(--orange);margin-bottom:6px">ЦЕЛЬ</div>
+    <div id="cd-race-name" style="font-family:var(--font-d);font-size:20px;font-weight:900;margin-bottom:10px">Полумарафон 21 км — 26 апреля</div>
     <div style="display:flex;align-items:baseline;gap:6px">
       <div class="cd-num" id="cd-num">—</div>
       <div style="color:var(--muted);font-size:16px">дней</div>
@@ -185,12 +182,8 @@ body{background:var(--bg);color:var(--text);font-family:var(--font-b);min-height
     <div class="cal-ring-wrap">
       <svg width="90" height="90" viewBox="0 0 100 100">
         <circle cx="50" cy="50" r="42" fill="none" stroke="rgba(255,255,255,0.05)" stroke-width="10"/>
-        <circle cx="50" cy="50" r="42" fill="none" stroke="url(#rg)" stroke-width="10"
-          stroke-linecap="round" stroke-dasharray="264" id="cal-ring"
-          stroke-dashoffset="264" transform="rotate(-90 50 50)" style="transition:stroke-dashoffset .8s"/>
-        <defs><linearGradient id="rg" x1="0%" y1="0%" x2="100%" y2="0%">
-          <stop offset="0%" stop-color="#ffd440"/><stop offset="100%" stop-color="#ff6b2b"/>
-        </linearGradient></defs>
+        <circle cx="50" cy="50" r="42" fill="none" stroke="url(#rg)" stroke-width="10" stroke-linecap="round" stroke-dasharray="264" id="cal-ring" stroke-dashoffset="264" transform="rotate(-90 50 50)" style="transition:stroke-dashoffset .8s"/>
+        <defs><linearGradient id="rg" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" stop-color="#ffd440"/><stop offset="100%" stop-color="#ff6b2b"/></linearGradient></defs>
       </svg>
       <div>
         <div class="ring-val" id="cal-eaten">0</div>
@@ -200,28 +193,13 @@ body{background:var(--bg);color:var(--text);font-family:var(--font-b);min-height
     </div>
   </div>
   <div class="macro-row">
-    <div class="macro-card">
-      <div class="macro-val" style="color:var(--blue)" id="m-prot">0</div>
-      <div class="macro-label">Белок</div>
-      <div style="font-size:10px;color:var(--muted)">/ <span id="t-prot">150</span>г</div>
-      <div class="macro-bar"><div class="macro-fill" id="bar-prot" style="width:0%;background:var(--blue)"></div></div>
-    </div>
-    <div class="macro-card">
-      <div class="macro-val" style="color:var(--orange)" id="m-carbs">0</div>
-      <div class="macro-label">Углеводы</div>
-      <div style="font-size:10px;color:var(--muted)">/ <span id="t-carbs">230</span>г</div>
-      <div class="macro-bar"><div class="macro-fill" id="bar-carbs" style="width:0%;background:var(--orange)"></div></div>
-    </div>
-    <div class="macro-card">
-      <div class="macro-val" style="color:var(--aqua)" id="m-fat">0</div>
-      <div class="macro-label">Жиры</div>
-      <div style="font-size:10px;color:var(--muted)">/ <span id="t-fat">75</span>г</div>
-      <div class="macro-bar"><div class="macro-fill" id="bar-fat" style="width:0%;background:var(--aqua)"></div></div>
-    </div>
+    <div class="macro-card"><div class="macro-val" style="color:var(--blue)" id="m-prot">0</div><div class="macro-label">Белок</div><div style="font-size:10px;color:var(--muted)">/ <span id="t-prot">150</span>г</div><div class="macro-bar"><div class="macro-fill" id="bar-prot" style="width:0%;background:var(--blue)"></div></div></div>
+    <div class="macro-card"><div class="macro-val" style="color:var(--orange)" id="m-carbs">0</div><div class="macro-label">Углеводы</div><div style="font-size:10px;color:var(--muted)">/ <span id="t-carbs">230</span>г</div><div class="macro-bar"><div class="macro-fill" id="bar-carbs" style="width:0%;background:var(--orange)"></div></div></div>
+    <div class="macro-card"><div class="macro-val" style="color:var(--aqua)" id="m-fat">0</div><div class="macro-label">Жиры</div><div style="font-size:10px;color:var(--muted)">/ <span id="t-fat">75</span>г</div><div class="macro-bar"><div class="macro-fill" id="bar-fat" style="width:0%;background:var(--aqua)"></div></div></div>
   </div>
   <div class="card">
     <div class="card-title">Еда сегодня</div>
-    <div id="food-list"><div style="color:var(--muted);font-size:13px;padding:16px 0;text-align:center">Пусто — добавь первый приём пищи</div></div>
+    <div id="food-list"></div>
     <button class="add-btn" style="margin-top:12px" onclick="openModal('food-modal')">+ Добавить</button>
   </div>
 </div>
@@ -234,84 +212,66 @@ body{background:var(--bg);color:var(--text);font-family:var(--font-b);min-height
     <button class="toggle-btn active" onclick="setTab('run')">Бег</button>
     <button class="toggle-btn" onclick="setTab('swim')">Плавание</button>
     <button class="toggle-btn" onclick="setTab('garmin')">Garmin</button>
+    <button class="toggle-btn" onclick="setTab('profile')">Профиль</button>
   </div>
-  <div id="tab-run">
-    <div class="card">
-      <div class="card-title">Подготовка к полумарафону</div>
-      <div id="run-plan"></div>
-    </div>
-  </div>
+  <div id="tab-run"><div class="card"><div class="card-title">Подготовка к полумарафону</div><div id="run-plan"></div></div></div>
   <div id="tab-swim" style="display:none">
-    <div class="card">
-      <div class="card-title">Плавание — статистика</div>
-      <div id="swim-stats"><div class="loading"><div class="spinner"></div></div></div>
-    </div>
+    <div class="card"><div class="card-title">Плавание — статистика</div><div id="swim-stats"><div class="loading"><div class="spinner"></div></div></div></div>
     <div class="card">
       <div class="card-title">Добавить тренировку</div>
-      <div class="input-group">
-        <label class="input-label">Дистанция (м)</label>
-        <input class="input-field" id="sw-dist" type="number" placeholder="1500">
-      </div>
-      <div class="input-group">
-        <label class="input-label">Время (мин)</label>
-        <input class="input-field" id="sw-time" type="number" placeholder="35">
-      </div>
+      <div class="input-group"><label class="input-label">Дистанция (м)</label><input class="input-field" id="sw-dist" type="number" placeholder="1500"></div>
+      <div class="input-group"><label class="input-label">Время (мин)</label><input class="input-field" id="sw-time" type="number" placeholder="35"></div>
       <button class="btn-primary" onclick="logSwim()">ЗАПИСАТЬ</button>
     </div>
   </div>
   <div id="tab-garmin" style="display:none">
     <div class="card">
       <div class="card-title">Garmin Connect</div>
-      <div class="garmin-status">
-        <div class="g-dot" id="g-dot"></div>
-        <div id="g-status-text" style="font-size:14px;color:var(--muted)">Проверяем...</div>
+      <div style="display:flex;align-items:center;gap:10px;padding:12px 0">
+        <div class="g-dot" id="g-dot" style="width:10px;height:10px;border-radius:50%;background:var(--muted)"></div>
+        <div id="g-status-text" style="font-size:14px;color:var(--muted)">Не подключён</div>
       </div>
-      <div class="input-group">
-        <label class="input-label">Garmin Email</label>
-        <input class="input-field" id="g-email" type="email" placeholder="your@email.com">
-      </div>
-      <div class="input-group">
-        <label class="input-label">Пароль</label>
-        <input class="input-field" id="g-pass" type="password" placeholder="••••••••">
-      </div>
+      <div class="input-group"><label class="input-label">Garmin Email</label><input class="input-field" id="g-email" type="email" placeholder="your@email.com"></div>
+      <div class="input-group"><label class="input-label">Пароль</label><input class="input-field" id="g-pass" type="password" placeholder="••••••••"></div>
       <div style="display:flex;gap:10px;margin-top:12px">
-        <button class="sync-btn" onclick="garminConnect()" id="g-connect-btn">Подключить</button>
-        <button class="sync-btn" onclick="garminSync()" id="g-sync-btn" style="display:none">🔄 Синхронизировать</button>
+        <button onclick="garminConnect()" id="g-connect-btn" style="padding:12px 20px;background:rgba(59,158,255,.15);border:1px solid rgba(59,158,255,.3);border-radius:10px;color:var(--blue);font-family:var(--font-d);font-size:15px;font-weight:700;cursor:pointer">Подключить</button>
+        <button onclick="garminSync()" id="g-sync-btn" style="display:none;padding:12px 20px;background:rgba(59,158,255,.15);border:1px solid rgba(59,158,255,.3);border-radius:10px;color:var(--blue);font-family:var(--font-d);font-size:15px;font-weight:700;cursor:pointer">🔄 Синхронизировать</button>
       </div>
       <div id="g-result" style="margin-top:12px;font-size:13px;color:var(--muted)"></div>
     </div>
-    <div class="card" id="garmin-workouts-card" style="display:none">
-      <div class="card-title">Последние тренировки из Garmin</div>
-      <div id="garmin-workouts-list"></div>
+  </div>
+  <div id="tab-profile" style="display:none">
+    <div class="card" id="profile-card"></div>
+    <div class="card">
+      <div class="card-title">Цели питания</div>
+      <div class="input-row">
+        <div class="input-group"><label class="input-label">Калории</label><input class="input-field" id="g-cal" type="number" placeholder="2300"></div>
+        <div class="input-group"><label class="input-label">Белок (г)</label><input class="input-field" id="g-prot" type="number" placeholder="150"></div>
+      </div>
+      <div class="input-row">
+        <div class="input-group"><label class="input-label">Углеводы (г)</label><input class="input-field" id="g-carbs" type="number" placeholder="230"></div>
+        <div class="input-group"><label class="input-label">Жиры (г)</label><input class="input-field" id="g-fat" type="number" placeholder="75"></div>
+      </div>
+      <button class="btn-primary" onclick="saveGoals()">СОХРАНИТЬ ЦЕЛИ</button>
     </div>
   </div>
 </div>
 
-<!-- NAV -->
 <nav class="nav">
-  <button class="nav-btn active" onclick="switchScreen('today')" id="nav-today">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>Сегодня
-  </button>
-  <button class="nav-btn" onclick="switchScreen('plan')" id="nav-plan">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>План
-  </button>
-  <button class="nav-btn" onclick="switchScreen('nutrition')" id="nav-nutrition">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8h1a4 4 0 0 1 0 8h-1"/><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/><line x1="6" y1="1" x2="6" y2="4"/><line x1="10" y1="1" x2="10" y2="4"/><line x1="14" y1="1" x2="14" y2="4"/></svg>Питание
-  </button>
-  <button class="nav-btn" onclick="switchScreen('stats')" id="nav-stats">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>Прогресс
-  </button>
+  <button class="nav-btn active" onclick="switchScreen('today')" id="nav-today"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>Сегодня</button>
+  <button class="nav-btn" onclick="switchScreen('plan')" id="nav-plan"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>План</button>
+  <button class="nav-btn" onclick="switchScreen('nutrition')" id="nav-nutrition"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8h1a4 4 0 0 1 0 8h-1"/><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/><line x1="6" y1="1" x2="6" y2="4"/><line x1="10" y1="1" x2="10" y2="4"/><line x1="14" y1="1" x2="14" y2="4"/></svg>Питание</button>
+  <button class="nav-btn" onclick="switchScreen('stats')" id="nav-stats"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>Прогресс</button>
 </nav>
+
+</div><!-- /app -->
 
 <!-- FOOD MODAL -->
 <div class="modal-overlay" id="food-modal">
   <div class="modal">
     <div class="modal-handle"></div>
     <div class="modal-title">Добавить еду</div>
-    <div class="input-group">
-      <label class="input-label">Название</label>
-      <input class="input-field" id="f-name" type="text" placeholder="Куриная грудь 200г">
-    </div>
+    <div class="input-group"><label class="input-label">Название</label><input class="input-field" id="f-name" type="text" placeholder="Куриная грудь 200г"></div>
     <div class="input-row">
       <div class="input-group"><label class="input-label">Калории</label><input class="input-field" id="f-cal" type="number" placeholder="200"></div>
       <div class="input-group"><label class="input-label">Белок (г)</label><input class="input-field" id="f-prot" type="number" placeholder="40"></div>
@@ -321,443 +281,397 @@ body{background:var(--bg);color:var(--text);font-family:var(--font-b);min-height
       <div class="input-group"><label class="input-label">Жиры (г)</label><input class="input-field" id="f-fat" type="number" placeholder="5"></div>
     </div>
     <button class="btn-primary" onclick="addMeal()">ДОБАВИТЬ</button>
-    <button onclick="closeModal('food-modal')" style="width:100%;padding:14px;border:none;background:none;color:var(--muted);font-family:var(--font-b);font-size:14px;cursor:pointer;margin-top:6px">Отмена</button>
+    <button onclick="closeModal('food-modal')" class="btn-secondary">Отмена</button>
+  </div>
+</div>
+
+<!-- PLAN EDIT MODAL -->
+<div class="modal-overlay" id="plan-edit-modal">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title">Редактировать план</div>
+    <div class="input-group"><label class="input-label">Название цели</label><input class="input-field" id="pe-race-name" type="text" placeholder="Полумарафон 21 км"></div>
+    <div class="input-group"><label class="input-label">Дата гонки</label><input class="input-field" id="pe-race-date" type="date" value="2026-04-26"></div>
+    <div style="margin:16px 0 8px;font-size:11px;letter-spacing:2px;text-transform:uppercase;color:var(--muted)">Расписание недели</div>
+    <div id="plan-editor-rows"></div>
+    <button class="btn-primary" style="margin-top:16px" onclick="savePlan()">СОХРАНИТЬ ПЛАН</button>
+    <button onclick="closeModal('plan-edit-modal')" class="btn-secondary">Отмена</button>
   </div>
 </div>
 
 <script>
-// ============ CONFIG ============
-// При локальном запуске: http://localhost:8000
-// После деплоя на Railway: замени на свой URL
-const API = window.location.hostname === 'localhost'
-  ? 'http://localhost:8000'
-  : ''; // пустая строка = тот же домен (Railway)
+const API = window.location.hostname==='localhost' ? 'http://localhost:8000' : '';
+let TOKEN = localStorage.getItem('athlete_token');
+let CURRENT_USER = JSON.parse(localStorage.getItem('athlete_user')||'null');
 
-// ============ API HELPERS ============
-async function api(path, opts = {}) {
-  try {
-    const res = await fetch(API + path, {
-      headers: { 'Content-Type': 'application/json', ...opts.headers },
-      ...opts
-    });
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
-      throw new Error(err.detail || `HTTP ${res.status}`);
-    }
-    return await res.json();
-  } catch (e) {
-    console.error('API error:', e);
-    throw e;
-  }
-}
+// Default plan
+const DEFAULT_PLAN = [
+  {day:'ВС',type:'runlong',icon:'🏃',label:'Длинный бег',color:'var(--yellow)',detail:'14–18 км · 6:00–6:20 мин/км'},
+  {day:'ПН',type:'swim',icon:'🏊',label:'Плавание',color:'var(--blue)',detail:'Бассейн 1 500–2 000 м'},
+  {day:'ВТ',type:'gym',icon:'💪',label:'Тренажёрка A',color:'var(--aqua)',detail:'Вечер · 40 мин · Прог. A'},
+  {day:'СР',type:'swim',icon:'🏊',label:'Плавание',color:'var(--blue)',detail:'Бассейн 1 500–2 000 м'},
+  {day:'ЧТ',type:'gym',icon:'💪',label:'Тренажёрка B',color:'var(--aqua)',detail:'Вечер · 40 мин · Прог. B'},
+  {day:'ПТ',type:'swim',icon:'🏊',label:'Плавание',color:'var(--blue)',detail:'Бассейн 1 500–2 000 м'},
+  {day:'СБ',type:'run',icon:'🏃',label:'Темповый бег',color:'var(--orange)',detail:'8–12 км · 5:10–5:30 мин/км'},
+];
+let USER_PLAN = JSON.parse(localStorage.getItem('user_plan')||'null') || DEFAULT_PLAN;
+let RACE_DATE = localStorage.getItem('race_date') || '2026-04-26';
+let RACE_NAME = localStorage.getItem('race_name') || 'Полумарафон 21 км — 26 апреля';
 
-const get = (path) => api(path);
-const post = (path, data) => api(path, { method: 'POST', body: JSON.stringify(data) });
-const del = (path) => api(path, { method: 'DELETE' });
-
-// ============ STATIC DATA ============
-const today = new Date();
-const DAY = today.getDay();
-const WEEK_PLAN = [
-  { day:'ВС', type:'runlong', icon:'🏃', label:'Длинный бег',  color:'var(--yellow)', detail:'14–18 км · 6:00–6:20 мин/км' },
-  { day:'ПН', type:'swim',   icon:'🏊', label:'Плавание',     color:'var(--blue)',   detail:'Бассейн 1 500–2 000 м' },
-  { day:'ВТ', type:'gym',    icon:'💪', label:'Тренажёрка A', color:'var(--aqua)',   detail:'Вечер · 40 мин · Прог. A' },
-  { day:'СР', type:'swim',   icon:'🏊', label:'Плавание',     color:'var(--blue)',   detail:'Бассейн 1 500–2 000 м' },
-  { day:'ЧТ', type:'gym',    icon:'💪', label:'Тренажёрка B', color:'var(--aqua)',   detail:'Вечер · 40 мин · Прог. B' },
-  { day:'ПТ', type:'swim',   icon:'🏊', label:'Плавание',     color:'var(--blue)',   detail:'Бассейн 1 500–2 000 м' },
-  { day:'СБ', type:'run',    icon:'🏃', label:'Темповый бег', color:'var(--orange)', detail:'8–12 км · 5:10–5:30 мин/км' },
-];
-const GYM_A = [
-  {name:'Жим лёжа',sets:'4×8 · 70% 1RM'},{name:'Тяга штанги',sets:'4×8 · строгая техника'},
-  {name:'Приседания',sets:'3×10 · средний вес'},{name:'Планка',sets:'3×60 сек'},{name:'Подтягивания',sets:'3×max'}
-];
-const GYM_B = [
-  {name:'Жим плечами',sets:'4×10 · гантели'},{name:'Румынская тяга',sets:'4×10 · лёгкий вес'},
-  {name:'Выпады',sets:'3×12 каждая нога'},{name:'Скручивания',sets:'3×20'},{name:'Тяга к поясу',sets:'3×12'}
-];
-const RUN_PLAN = [
+const GYM_A=[{name:'Жим лёжа',sets:'4×8'},{name:'Тяга штанги',sets:'4×8'},{name:'Приседания',sets:'3×10'},{name:'Планка',sets:'3×60с'},{name:'Подтягивания',sets:'3×max'}];
+const GYM_B=[{name:'Жим плечами',sets:'4×10'},{name:'Румынская тяга',sets:'4×10'},{name:'Выпады',sets:'3×12'},{name:'Скручивания',sets:'3×20'},{name:'Тяга к поясу',sets:'3×12'}];
+const RUN_PLAN=[
   {week:'Нед 1 (11–17 мар)',sat:'10 км',satP:'5:20–5:40',sun:'14 км',sunP:'6:00–6:20',total:'24 км',note:'База'},
   {week:'Нед 2 (18–24 мар)',sat:'12 км',satP:'5:10–5:20',sun:'15 км',sunP:'5:55–6:10',total:'27 км',note:'Темп СБ'},
   {week:'Нед 3 (25–31 мар)',sat:'10 км',satP:'5:30–5:50',sun:'16 км',sunP:'6:00–6:20',total:'26 км',note:'Восст.'},
-  {week:'Нед 4 (1–7 апр)',  sat:'14 км',satP:'5:10–5:20',sun:'18 км',sunP:'5:50–6:10',total:'32 км',note:'🔥 Пик'},
-  {week:'Нед 5 (8–14 апр)', sat:'10 км',satP:'5:20–5:30',sun:'14 км',sunP:'6:00–6:10',total:'24 км',note:'Снижение'},
-  {week:'Нед 6 (15–21 апр)',sat:'8 км', satP:'5:20–5:30',sun:'12 км',sunP:'5:50–6:00',total:'20 км',note:'Подводка'},
-  {week:'Нед 7 (22–25 апр)',sat:'5 км', satP:'лёгко',    sun:'—',   sunP:'—',         total:'5 км', note:'🏁 СТАРТ!'},
+  {week:'Нед 4 (1–7 апр)',sat:'14 км',satP:'5:10–5:20',sun:'18 км',sunP:'5:50–6:10',total:'32 км',note:'🔥 Пик'},
+  {week:'Нед 5 (8–14 апр)',sat:'10 км',satP:'5:20–5:30',sun:'14 км',sunP:'6:00–6:10',total:'24 км',note:'Снижение'},
+  {week:'Нед 6 (15–21 апр)',sat:'8 км',satP:'5:20–5:30',sun:'12 км',sunP:'5:50–6:00',total:'20 км',note:'Подводка'},
+  {week:'Нед 7 (22–25 апр)',sat:'5 км',satP:'лёгко',sun:'—',sunP:'—',total:'5 км',note:'🏁 СТАРТ!'},
 ];
 
-let doneWorkouts = JSON.parse(localStorage.getItem('done_'+today.toDateString())||'[]');
+// ===== API =====
+const headers = () => ({
+  'Content-Type':'application/json',
+  ...(TOKEN ? {'Authorization':'Bearer '+TOKEN} : {})
+});
+async function api(path,opts={}){
+  const res=await fetch(API+path,{headers:headers(),...opts});
+  if(!res.ok){const e=await res.json().catch(()=>({}));throw new Error(e.detail||'Error '+res.status);}
+  return res.json();
+}
+const get=(p)=>api(p);
+const post=(p,d)=>api(p,{method:'POST',body:JSON.stringify(d)});
+const del=(p)=>api(p,{method:'DELETE'});
 
-// ============ NAVIGATION ============
-function switchScreen(name) {
+// ===== AUTH =====
+function init(){
+  if(TOKEN && CURRENT_USER){showApp();}
+  else{showAuth();}
+}
+
+function showAuth(){
+  document.getElementById('auth-screen').style.display='flex';
+  document.getElementById('app').style.display='none';
+}
+
+function showApp(){
+  document.getElementById('auth-screen').style.display='none';
+  document.getElementById('app').style.display='block';
+  loadToday();
+  renderPlan();
+}
+
+function authTab(tab){
+  document.getElementById('login-form').style.display=tab==='login'?'block':'none';
+  document.getElementById('register-form').style.display=tab==='register'?'block':'none';
+  document.querySelectorAll('.auth-tab').forEach((b,i)=>b.classList.toggle('active',['login','register'][i]===tab));
+}
+
+async function doLogin(){
+  const email=document.getElementById('l-email').value;
+  const pass=document.getElementById('l-pass').value;
+  if(!email||!pass){toast('Введи email и пароль',true);return;}
+  try{
+    const r=await post('/api/auth/login',{email,password:pass});
+    TOKEN=r.token; CURRENT_USER=r.user;
+    localStorage.setItem('athlete_token',TOKEN);
+    localStorage.setItem('athlete_user',JSON.stringify(CURRENT_USER));
+    toast('Добро пожаловать, '+r.user.name+'!');
+    showApp();
+  }catch(e){toast(e.message,true);}
+}
+
+async function doRegister(){
+  const name=document.getElementById('r-name').value;
+  const email=document.getElementById('r-email').value;
+  const pass=document.getElementById('r-pass').value;
+  if(!email||!pass){toast('Заполни все поля',true);return;}
+  if(pass.length<6){toast('Пароль минимум 6 символов',true);return;}
+  try{
+    const r=await post('/api/auth/register',{email,password:pass,name});
+    TOKEN=r.token; CURRENT_USER=r.user;
+    localStorage.setItem('athlete_token',TOKEN);
+    localStorage.setItem('athlete_user',JSON.stringify(CURRENT_USER));
+    toast('Аккаунт создан! Добро пожаловать 🎉');
+    showApp();
+  }catch(e){toast(e.message,true);}
+}
+
+function continueAsGuest(){
+  TOKEN=null; CURRENT_USER={name:'Гость',email:''};
+  showApp();
+}
+
+function doLogout(){
+  TOKEN=null; CURRENT_USER=null;
+  localStorage.removeItem('athlete_token');
+  localStorage.removeItem('athlete_user');
+  showAuth();
+}
+
+// ===== NAV =====
+function switchScreen(name){
   document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
   document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
   document.getElementById('screen-'+name).classList.add('active');
   document.getElementById('nav-'+name).classList.add('active');
-  if (name==='nutrition') loadNutrition();
-  if (name==='stats') { loadSwimStats(); checkGarminStatus(); }
+  if(name==='nutrition')loadNutrition();
+  if(name==='stats'){loadSwimStats();renderRunPlan();}
 }
 
-// ============ TODAY ============
-async function loadToday() {
-  const plan = WEEK_PLAN[DAY];
-  const dayNames = ['Воскресенье','Понедельник','Вторник','Среда','Четверг','Пятница','Суббота'];
-  const dayShort = ['ВС','ПН','ВТ','СР','ЧТ','ПТ','СБ'];
+// ===== TODAY =====
+const today=new Date();
+const DAY=today.getDay();
+let doneWorkouts=JSON.parse(localStorage.getItem('done_'+today.toDateString())||'[]');
 
-  // Week strip
-  let weekHtml = '<div class="week-grid">';
-  for (let i=0;i<7;i++) {
-    const d = new Date(today); d.setDate(today.getDate()-today.getDay()+i);
-    const p = WEEK_PLAN[i];
-    const dotColors = {swim:'var(--blue)',run:'var(--orange)',runlong:'var(--yellow)',gym:'var(--aqua)'};
-    weekHtml += `<div class="week-day ${i===DAY?'today':''}">
-      <div class="week-day-name">${dayShort[i]}</div>
-      <div class="week-day-num">${d.getDate()}</div>
-      <div class="week-day-dot" style="background:${dotColors[p.type]||'transparent'}"></div>
-    </div>`;
+async function loadToday(){
+  const plan=USER_PLAN[DAY];
+  const dayNames=['Воскресенье','Понедельник','Вторник','Среда','Четверг','Пятница','Суббота'];
+  const dayShort=['ВС','ПН','ВТ','СР','ЧТ','ПТ','СБ'];
+  let weekHtml='<div class="week-grid">';
+  for(let i=0;i<7;i++){
+    const d=new Date(today);d.setDate(today.getDate()-today.getDay()+i);
+    const p=USER_PLAN[i];
+    const dotColors={swim:'var(--blue)',run:'var(--orange)',runlong:'var(--yellow)',gym:'var(--aqua)'};
+    weekHtml+=`<div class="week-day ${i===DAY?'today':''}"><div class="week-day-name">${dayShort[i]}</div><div class="week-day-num">${d.getDate()}</div><div class="week-day-dot" style="background:${dotColors[p.type]||'transparent'}"></div></div>`;
   }
-  weekHtml += '</div>';
-
-  // Workout block
-  const bgMap = {swim:'rgba(59,158,255,0.15)',run:'rgba(255,107,43,0.15)',runlong:'rgba(255,212,64,0.15)',gym:'rgba(0,229,204,0.15)'};
-  const done = doneWorkouts.includes(0);
-  const workoutHtml = `<div class="workout-block ${done?'done':''}" onclick="toggleDone(0)">
-    <div class="wb-icon" style="background:${bgMap[plan.type]||'var(--bg3)'}">${plan.icon}</div>
-    <div class="wb-info">
-      <div class="wb-name">${plan.label}</div>
-      <div class="wb-detail">${plan.detail}</div>
-    </div>
-    <div class="wb-check">${done?'✓':''}</div>
-  </div>`;
-
-  // Try to load today's nutrition from API
-  let nutHtml = '';
-  try {
-    const nut = await get('/api/nutrition/today');
-    const cal = nut.totals?.calories || 0;
-    const prot = nut.totals?.protein_g || 0;
-    const tProt = nut.goals?.protein_g || 150;
-    const pct = Math.min(100, Math.round(prot/tProt*100));
-    nutHtml = `<div class="card" style="margin-top:12px">
-      <div class="card-title">Питание сегодня</div>
-      <div style="display:flex;gap:20px;align-items:center">
-        <div>
-          <div style="font-family:var(--font-d);font-size:36px;font-weight:900;color:var(--yellow)">${Math.round(cal)}</div>
-          <div style="font-size:12px;color:var(--muted)">ккал / ${nut.goals?.calories||2300}</div>
-        </div>
-        <div style="flex:1">
-          <div style="font-size:12px;color:var(--muted);margin-bottom:5px">Белок: ${Math.round(prot)}г / ${tProt}г (${pct}%)</div>
-          <div style="background:rgba(255,255,255,0.05);border-radius:4px;height:8px;overflow:hidden">
-            <div style="width:${pct}%;height:100%;background:linear-gradient(90deg,var(--blue),var(--aqua));border-radius:4px;transition:width .5s"></div>
-          </div>
-          <div style="font-size:11px;color:var(--muted);margin-top:5px">${nut.meals?.length||0} приёмов пищи</div>
-        </div>
-      </div>
-    </div>`;
-  } catch(e) {
-    nutHtml = '<div class="card" style="margin-top:12px"><div style="color:var(--muted);font-size:13px">Сервер недоступен — запусти бекенд</div></div>';
-  }
-
-  document.getElementById('today-content').innerHTML = `
-    ${weekHtml}
-    <div style="font-family:var(--font-d);font-size:40px;font-weight:900;letter-spacing:-1px;margin-bottom:6px">${dayNames[DAY]}</div>
-    <div class="day-type ${plan.type}">${plan.icon} ${plan.label}</div>
-    ${workoutHtml}
-    ${nutHtml}
-  `;
+  weekHtml+='</div>';
+  const bgMap={swim:'rgba(59,158,255,0.15)',run:'rgba(255,107,43,0.15)',runlong:'rgba(255,212,64,0.15)',gym:'rgba(0,229,204,0.15)'};
+  const done=doneWorkouts.includes(0);
+  const workoutHtml=`<div class="workout-block ${done?'done':''}" onclick="toggleDone(0)"><div class="wb-icon" style="background:${bgMap[plan.type]||'var(--bg3)'}">${plan.icon}</div><div class="wb-info"><div class="wb-name">${plan.label}</div><div class="wb-detail">${plan.detail}</div></div><div class="wb-check">${done?'✓':''}</div></div>`;
+  let nutHtml='';
+  try{
+    const nut=await get('/api/nutrition/today');
+    const cal=nut.totals?.calories||0;const prot=nut.totals?.protein_g||0;
+    const tProt=nut.goals?.protein_g||150;const pct=Math.min(100,Math.round(prot/tProt*100));
+    nutHtml=`<div class="card" style="margin-top:12px"><div class="card-title">Питание сегодня</div><div style="display:flex;gap:20px;align-items:center"><div><div style="font-family:var(--font-d);font-size:36px;font-weight:900;color:var(--yellow)">${Math.round(cal)}</div><div style="font-size:12px;color:var(--muted)">ккал / ${nut.goals?.calories||2300}</div></div><div style="flex:1"><div style="font-size:12px;color:var(--muted);margin-bottom:5px">Белок: ${Math.round(prot)}г / ${tProt}г (${pct}%)</div><div style="background:rgba(255,255,255,0.05);border-radius:4px;height:8px;overflow:hidden"><div style="width:${pct}%;height:100%;background:linear-gradient(90deg,var(--blue),var(--aqua));border-radius:4px"></div></div><div style="font-size:11px;color:var(--muted);margin-top:5px">${nut.meals?.length||0} приёмов пищи</div></div></div></div>`;
+  }catch(e){nutHtml=`<div class="card" style="margin-top:12px"><div style="color:var(--muted);font-size:13px">Ошибка загрузки данных</div></div>`;}
+  const userBadge=CURRENT_USER&&CURRENT_USER.email?`<div class="user-badge"><div class="user-avatar">${(CURRENT_USER.name||'?')[0].toUpperCase()}</div><div><div class="user-name">${CURRENT_USER.name}</div><div class="user-email">${CURRENT_USER.email}</div></div><button class="logout-btn" onclick="doLogout()">Выйти</button></div>`:'';
+  document.getElementById('today-content').innerHTML=`${userBadge}${weekHtml}<div style="font-family:var(--font-d);font-size:40px;font-weight:900;letter-spacing:-1px;margin-bottom:6px">${dayNames[DAY]}</div><div class="day-type ${plan.type}">${plan.icon} ${plan.label}</div>${workoutHtml}${nutHtml}`;
 }
 
-function toggleDone(idx) {
-  if (doneWorkouts.includes(idx)) doneWorkouts = doneWorkouts.filter(i=>i!==idx);
-  else { doneWorkouts.push(idx); toast('Тренировка выполнена! 💪'); }
-  localStorage.setItem('done_'+today.toDateString(), JSON.stringify(doneWorkouts));
+function toggleDone(idx){
+  if(doneWorkouts.includes(idx))doneWorkouts=doneWorkouts.filter(i=>i!==idx);
+  else{doneWorkouts.push(idx);toast('Тренировка выполнена! 💪');}
+  localStorage.setItem('done_'+today.toDateString(),JSON.stringify(doneWorkouts));
   loadToday();
 }
 
-// ============ PLAN ============
-function renderPlan() {
-  // Week
-  const badges = {swim:'badge-swim',run:'badge-run',runlong:'badge-long',gym:'badge-gym'};
-  let html = '';
-  WEEK_PLAN.forEach(p => {
-    html += `<div style="display:flex;align-items:flex-start;gap:12px;padding:12px 0;border-bottom:1px solid var(--border)">
-      <div style="font-family:var(--font-d);font-size:13px;font-weight:800;letter-spacing:1px;text-transform:uppercase;width:32px;flex-shrink:0;padding-top:2px;color:var(--muted)">${p.day}</div>
-      <div>
-        <div style="font-family:var(--font-d);font-size:17px;font-weight:800">${p.icon} ${p.label}</div>
-        <div style="font-size:12px;color:var(--muted);margin-top:2px">${p.detail}</div>
-      </div>
-    </div>`;
+// ===== PLAN =====
+function renderPlan(){
+  document.getElementById('cd-race-name').textContent=RACE_NAME;
+  const race=new Date(RACE_DATE);
+  const days=Math.ceil((race-today)/86400000);
+  const total=Math.ceil((race-new Date('2026-01-01'))/86400000);
+  const pct=Math.min(100,Math.round((total-days)/total*100));
+  document.getElementById('cd-num').textContent=Math.max(0,days);
+  document.getElementById('cd-bar').style.width=pct+'%';
+  let html='';
+  USER_PLAN.forEach(p=>{
+    html+=`<div style="display:flex;align-items:flex-start;gap:12px;padding:12px 0;border-bottom:1px solid var(--border)"><div style="font-family:var(--font-d);font-size:13px;font-weight:800;letter-spacing:1px;text-transform:uppercase;width:32px;flex-shrink:0;padding-top:2px;color:var(--muted)">${p.day}</div><div><div style="font-family:var(--font-d);font-size:17px;font-weight:800">${p.icon} ${p.label}</div><div style="font-size:12px;color:var(--muted);margin-top:2px">${p.detail}</div></div></div>`;
   });
-  document.getElementById('plan-week').innerHTML = html;
-
-  // Gym
-  let gymHtml = '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">';
-  [['A',GYM_A],['B',GYM_B]].forEach(([name,prog]) => {
-    gymHtml += `<div style="background:var(--bg3);border-radius:12px;padding:14px;border:1px solid var(--border)">
-      <div style="font-family:var(--font-d);font-size:13px;font-weight:800;letter-spacing:2px;color:var(--aqua);margin-bottom:10px">ПРОГ. ${name}</div>`;
-    prog.forEach(e => {
-      gymHtml += `<div style="margin-bottom:8px">
-        <div style="font-family:var(--font-d);font-size:15px;font-weight:700">${e.name}</div>
-        <div style="font-size:11px;color:var(--muted)">${e.sets}</div>
-      </div>`;
-    });
-    gymHtml += '</div>';
+  document.getElementById('plan-week').innerHTML=html;
+  let gymHtml='<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">';
+  [['A',GYM_A],['B',GYM_B]].forEach(([name,prog])=>{
+    gymHtml+=`<div style="background:var(--bg3);border-radius:12px;padding:14px;border:1px solid var(--border)"><div style="font-family:var(--font-d);font-size:13px;font-weight:800;letter-spacing:2px;color:var(--aqua);margin-bottom:10px">ПРОГ. ${name}</div>`;
+    prog.forEach(e=>{gymHtml+=`<div style="margin-bottom:8px"><div style="font-family:var(--font-d);font-size:15px;font-weight:700">${e.name}</div><div style="font-size:11px;color:var(--muted)">${e.sets}</div></div>`;});
+    gymHtml+='</div>';
   });
-  gymHtml += '</div>';
-  document.getElementById('gym-program').innerHTML = gymHtml;
-
-  // Countdown
-  const race = new Date('2026-04-26');
-  const days = Math.ceil((race-today)/86400000);
-  const total = Math.ceil((race-new Date('2026-01-01'))/86400000);
-  const pct = Math.min(100, Math.round((total-days)/total*100));
-  document.getElementById('cd-num').textContent = days;
-  document.getElementById('cd-bar').style.width = pct+'%';
-
-  // Run plan
-  let runHtml = '';
-  RUN_PLAN.forEach(w => {
-    runHtml += `<div style="background:var(--bg3);border-radius:12px;padding:14px;margin-bottom:8px;border:1px solid var(--border)">
-      <div style="display:flex;justify-content:space-between;margin-bottom:10px">
-        <div style="font-size:12px;color:var(--muted)">${w.week}</div>
-        <div style="font-family:var(--font-d);font-size:18px;font-weight:900;color:var(--orange)">${w.total}</div>
-      </div>
-      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">
-        <div style="background:var(--bg2);border-radius:8px;padding:8px;text-align:center">
-          <div style="font-size:10px;color:var(--muted)">СБ</div>
-          <div style="font-family:var(--font-d);font-size:16px;font-weight:800;color:var(--orange)">${w.sat}</div>
-          <div style="font-size:10px;color:var(--muted)">${w.satP}</div>
-        </div>
-        <div style="background:var(--bg2);border-radius:8px;padding:8px;text-align:center">
-          <div style="font-size:10px;color:var(--muted)">ВС</div>
-          <div style="font-family:var(--font-d);font-size:16px;font-weight:800;color:var(--yellow)">${w.sun}</div>
-          <div style="font-size:10px;color:var(--muted)">${w.sunP}</div>
-        </div>
-        <div style="background:var(--bg2);border-radius:8px;padding:8px;text-align:center;display:flex;align-items:center;justify-content:center">
-          <div style="font-size:11px;color:var(--muted);text-align:center">${w.note}</div>
-        </div>
-      </div>
-    </div>`;
-  });
-  document.getElementById('run-plan').innerHTML = runHtml;
+  gymHtml+='</div>';
+  document.getElementById('gym-program').innerHTML=gymHtml;
 }
 
-// ============ NUTRITION ============
-async function loadNutrition() {
-  document.getElementById('nut-date').textContent = today.toLocaleDateString('ru',{weekday:'long',day:'numeric',month:'long'});
-  try {
-    const data = await get('/api/nutrition/today');
-    const t = data.totals || {}; const g = data.goals || {};
-    const cal = Math.round(t.calories||0), prot = Math.round(t.protein_g||0),
-          carbs = Math.round(t.carbs_g||0), fat = Math.round(t.fat_g||0);
-    const tCal = g.calories||2300, tP = g.protein_g||150, tC = g.carbs_g||230, tF = g.fat_g||75;
+function renderRunPlan(){
+  let html='';
+  RUN_PLAN.forEach(w=>{
+    html+=`<div style="background:var(--bg3);border-radius:12px;padding:14px;margin-bottom:8px;border:1px solid var(--border)"><div style="display:flex;justify-content:space-between;margin-bottom:10px"><div style="font-size:12px;color:var(--muted)">${w.week}</div><div style="font-family:var(--font-d);font-size:18px;font-weight:900;color:var(--orange)">${w.total}</div></div><div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px"><div style="background:var(--bg2);border-radius:8px;padding:8px;text-align:center"><div style="font-size:10px;color:var(--muted)">СБ</div><div style="font-family:var(--font-d);font-size:16px;font-weight:800;color:var(--orange)">${w.sat}</div><div style="font-size:10px;color:var(--muted)">${w.satP}</div></div><div style="background:var(--bg2);border-radius:8px;padding:8px;text-align:center"><div style="font-size:10px;color:var(--muted)">ВС</div><div style="font-family:var(--font-d);font-size:16px;font-weight:800;color:var(--yellow)">${w.sun}</div><div style="font-size:10px;color:var(--muted)">${w.sunP}</div></div><div style="background:var(--bg2);border-radius:8px;padding:8px;text-align:center;display:flex;align-items:center;justify-content:center"><div style="font-size:11px;color:var(--muted);text-align:center">${w.note}</div></div></div></div>`;
+  });
+  document.getElementById('run-plan').innerHTML=html;
+}
 
-    document.getElementById('cal-eaten').textContent = cal;
-    document.getElementById('cal-target').textContent = tCal;
-    document.getElementById('t-prot').textContent = tP;
-    document.getElementById('t-carbs').textContent = tC;
-    document.getElementById('t-fat').textContent = tF;
-    document.getElementById('m-prot').textContent = prot;
-    document.getElementById('m-carbs').textContent = carbs;
-    document.getElementById('m-fat').textContent = fat;
+// ===== PLAN EDITOR =====
+function openPlanEditor(){
+  document.getElementById('pe-race-name').value=RACE_NAME.replace(/ — .*/,'');
+  document.getElementById('pe-race-date').value=RACE_DATE;
+  const days=['ВС','ПН','ВТ','СР','ЧТ','ПТ','СБ'];
+  let html='';
+  USER_PLAN.forEach((p,i)=>{
+    html+=`<div class="plan-day-row"><div class="plan-day-label">${days[i]}</div><input class="plan-day-input" id="pe-day-${i}" value="${p.icon} ${p.label}" placeholder="Плавание / Бег / Зал / Отдых"></div>`;
+  });
+  document.getElementById('plan-editor-rows').innerHTML=html;
+}
 
-    const rem = tCal - cal;
-    document.getElementById('cal-balance').innerHTML = rem > 0
-      ? `<span style="color:var(--green)">+${rem} ккал осталось</span>`
-      : `<span style="color:var(--red)">${Math.abs(rem)} ккал сверх</span>`;
+function savePlan(){
+  const raceName=document.getElementById('pe-race-name').value||'Гонка';
+  const raceDate=document.getElementById('pe-race-date').value||'2026-04-26';
+  const days=['ВС','ПН','ВТ','СР','ЧТ','ПТ','СБ'];
+  const typeMap={плав:'swim',бассейн:'swim',бег:'run',длинный:'runlong',зал:'gym',трен:'gym',отдых:'rest'};
+  const iconMap={swim:'🏊',run:'🏃',runlong:'🏃',gym:'💪',rest:'😴'};
+  const colorMap={swim:'var(--blue)',run:'var(--orange)',runlong:'var(--yellow)',gym:'var(--aqua)',rest:'var(--muted)'};
+  USER_PLAN=days.map((day,i)=>{
+    const val=document.getElementById('pe-day-'+i).value;
+    const lower=val.toLowerCase();
+    let type='swim';
+    for(const[k,v] of Object.entries(typeMap)){if(lower.includes(k)){type=v;break;}}
+    const label=val.replace(/^[^\w\s]*\s*/,'').trim()||val;
+    return {day,type,icon:iconMap[type]||'🏃',label,color:colorMap[type],detail:''};
+  });
+  RACE_DATE=raceDate;
+  RACE_NAME=raceName+' — '+new Date(raceDate).toLocaleDateString('ru',{day:'numeric',month:'long'});
+  localStorage.setItem('user_plan',JSON.stringify(USER_PLAN));
+  localStorage.setItem('race_date',RACE_DATE);
+  localStorage.setItem('race_name',RACE_NAME);
+  closeModal('plan-edit-modal');
+  renderPlan();
+  loadToday();
+  toast('План обновлён! ✅');
+}
 
-    const pctCal = Math.min(100,cal/tCal*100);
-    document.getElementById('cal-ring').style.strokeDashoffset = 264-(264*pctCal/100);
-    document.getElementById('bar-prot').style.width = Math.min(100,prot/tP*100)+'%';
-    document.getElementById('bar-carbs').style.width = Math.min(100,carbs/tC*100)+'%';
-    document.getElementById('bar-fat').style.width = Math.min(100,fat/tF*100)+'%';
-
-    // Food list
-    if (!data.meals || data.meals.length === 0) {
-      document.getElementById('food-list').innerHTML = '<div style="color:var(--muted);font-size:13px;padding:16px 0;text-align:center">Пусто</div>';
-    } else {
-      document.getElementById('food-list').innerHTML = data.meals.map(m => `
-        <div class="food-item">
-          <div>
-            <div class="food-name">${m.meal_name}</div>
-            <div class="food-macros">Б:${Math.round(m.protein_g)}г · У:${Math.round(m.carbs_g)}г · Ж:${Math.round(m.fat_g)}г</div>
-          </div>
-          <div style="display:flex;align-items:center">
-            <div class="food-cal">${Math.round(m.calories)}</div>
-            <button class="food-del" onclick="deleteMeal(${m.id})">×</button>
-          </div>
-        </div>`).join('');
+// ===== NUTRITION =====
+async function loadNutrition(){
+  document.getElementById('nut-date').textContent=today.toLocaleDateString('ru',{weekday:'long',day:'numeric',month:'long'});
+  try{
+    const data=await get('/api/nutrition/today');
+    const t=data.totals||{};const g=data.goals||{};
+    const cal=Math.round(t.calories||0),prot=Math.round(t.protein_g||0),carbs=Math.round(t.carbs_g||0),fat=Math.round(t.fat_g||0);
+    const tCal=g.calories||2300,tP=g.protein_g||150,tC=g.carbs_g||230,tF=g.fat_g||75;
+    document.getElementById('cal-eaten').textContent=cal;
+    document.getElementById('cal-target').textContent=tCal;
+    document.getElementById('t-prot').textContent=tP;
+    document.getElementById('t-carbs').textContent=tC;
+    document.getElementById('t-fat').textContent=tF;
+    document.getElementById('m-prot').textContent=prot;
+    document.getElementById('m-carbs').textContent=carbs;
+    document.getElementById('m-fat').textContent=fat;
+    const rem=tCal-cal;
+    document.getElementById('cal-balance').innerHTML=rem>0?`<span style="color:var(--green)">+${rem} ккал осталось</span>`:`<span style="color:var(--red)">${Math.abs(rem)} ккал сверх</span>`;
+    const pctCal=Math.min(100,cal/tCal*100);
+    document.getElementById('cal-ring').style.strokeDashoffset=264-(264*pctCal/100);
+    document.getElementById('bar-prot').style.width=Math.min(100,prot/tP*100)+'%';
+    document.getElementById('bar-carbs').style.width=Math.min(100,carbs/tC*100)+'%';
+    document.getElementById('bar-fat').style.width=Math.min(100,fat/tF*100)+'%';
+    if(!data.meals||data.meals.length===0){
+      document.getElementById('food-list').innerHTML='<div style="color:var(--muted);font-size:13px;padding:16px 0;text-align:center">Пусто</div>';
+    }else{
+      document.getElementById('food-list').innerHTML=data.meals.map(m=>`<div class="food-item"><div><div class="food-name">${m.meal_name}</div><div class="food-macros">Б:${Math.round(m.protein_g)}г · У:${Math.round(m.carbs_g)}г · Ж:${Math.round(m.fat_g)}г</div></div><div style="display:flex;align-items:center"><div class="food-cal">${Math.round(m.calories)}</div><button class="food-del" onclick="deleteMeal(${m.id})">×</button></div></div>`).join('');
     }
-  } catch(e) {
-    document.getElementById('food-list').innerHTML = `<div style="color:var(--red);font-size:13px;padding:12px 0">Ошибка: сервер недоступен.<br>Запусти: <code style="background:var(--bg3);padding:2px 6px;border-radius:4px">cd backend && python main.py</code></div>`;
-  }
+  }catch(e){document.getElementById('food-list').innerHTML=`<div style="color:var(--red);font-size:13px">Ошибка: ${e.message}</div>`;}
 }
 
-async function addMeal() {
-  const name = document.getElementById('f-name').value;
-  if (!name) { toast('Введи название!', true); return; }
-  try {
-    await post('/api/nutrition/', {
-      meal_name: name,
-      calories: parseInt(document.getElementById('f-cal').value)||0,
-      protein_g: parseFloat(document.getElementById('f-prot').value)||0,
-      carbs_g: parseFloat(document.getElementById('f-carbs').value)||0,
-      fat_g: parseFloat(document.getElementById('f-fat').value)||0,
-    });
+async function addMeal(){
+  const name=document.getElementById('f-name').value;
+  if(!name){toast('Введи название!',true);return;}
+  try{
+    await post('/api/nutrition/',{meal_name:name,calories:parseInt(document.getElementById('f-cal').value)||0,protein_g:parseFloat(document.getElementById('f-prot').value)||0,carbs_g:parseFloat(document.getElementById('f-carbs').value)||0,fat_g:parseFloat(document.getElementById('f-fat').value)||0});
     closeModal('food-modal');
     ['f-name','f-cal','f-prot','f-carbs','f-fat'].forEach(id=>document.getElementById(id).value='');
-    loadNutrition();
-    toast('Добавлено: '+name);
-  } catch(e) { toast('Ошибка: '+e.message, true); }
+    loadNutrition();toast('Добавлено: '+name);
+  }catch(e){toast('Ошибка: '+e.message,true);}
 }
 
-async function deleteMeal(id) {
-  try { await del('/api/nutrition/'+id); loadNutrition(); toast('Удалено'); }
-  catch(e) { toast('Ошибка', true); }
+async function deleteMeal(id){
+  try{await del('/api/nutrition/'+id);loadNutrition();toast('Удалено');}
+  catch(e){toast('Ошибка',true);}
 }
 
-// ============ SWIM STATS ============
-async function loadSwimStats() {
-  try {
-    const data = await get('/api/workouts/swim/stats');
-    const total = data.total || {};
-    let html = `
-      <div class="stat-row"><div class="stat-label">Всего тренировок</div><div class="stat-val" style="color:var(--blue)">${total.count||0}</div></div>
-      <div class="stat-row"><div class="stat-label">Км в бассейне</div><div class="stat-val" style="color:var(--blue)">${total.total_km||0}</div></div>`;
-    if (data.sessions && data.sessions.length > 0) {
-      html += '<div style="margin-top:12px">';
-      data.sessions.slice(0,5).forEach(s => {
-        html += `<div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--border)">
-          <div style="font-size:12px;color:var(--muted);width:60px">${s.date}</div>
-          <div style="font-family:var(--font-d);font-size:22px;font-weight:900;color:var(--blue)">${Math.round(s.distance_m||0)}<span style="font-size:11px;color:var(--muted)"> м</span></div>
-          <div style="margin-left:auto;font-size:12px;color:var(--muted)">${s.pace_per_100m||'—'} сек/100м</div>
-        </div>`;
-      });
-      html += '</div>';
+async function saveGoals(){
+  const goals={calories_target:document.getElementById('g-cal').value,protein_target:document.getElementById('g-prot').value,carbs_target:document.getElementById('g-carbs').value,fat_target:document.getElementById('g-fat').value};
+  try{await post('/api/nutrition/goals',goals);toast('Цели сохранены! ✅');}
+  catch(e){toast('Ошибка',true);}
+}
+
+// ===== SWIM =====
+async function loadSwimStats(){
+  try{
+    const data=await get('/api/workouts/swim/stats');
+    const total=data.total||{};
+    let html=`<div class="stat-row"><div style="color:var(--muted)">Всего тренировок</div><div style="font-family:var(--font-d);font-size:20px;font-weight:800;color:var(--blue)">${total.count||0}</div></div><div class="stat-row"><div style="color:var(--muted)">Км в бассейне</div><div style="font-family:var(--font-d);font-size:20px;font-weight:800;color:var(--blue)">${total.total_km||0}</div></div>`;
+    if(data.sessions&&data.sessions.length>0){
+      html+='<div style="margin-top:12px">';
+      data.sessions.slice(0,5).forEach(s=>{html+=`<div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--border)"><div style="font-size:12px;color:var(--muted);width:60px">${s.date}</div><div style="font-family:var(--font-d);font-size:22px;font-weight:900;color:var(--blue)">${Math.round(s.distance_m||0)}<span style="font-size:11px;color:var(--muted)"> м</span></div><div style="margin-left:auto;font-size:12px;color:var(--muted)">${s.pace_per_100m||'—'} с/100м</div></div>`;});
+      html+='</div>';
     }
-    document.getElementById('swim-stats').innerHTML = html;
-  } catch(e) {
-    document.getElementById('swim-stats').innerHTML = '<div style="color:var(--muted);font-size:13px">Нет данных — синхронизируй Garmin или добавь вручную</div>';
-  }
+    document.getElementById('swim-stats').innerHTML=html;
+  }catch(e){document.getElementById('swim-stats').innerHTML='<div style="color:var(--muted);font-size:13px">Нет данных</div>';}
 }
 
-async function logSwim() {
-  const dist = parseFloat(document.getElementById('sw-dist').value);
-  const time = parseFloat(document.getElementById('sw-time').value);
-  if (!dist) { toast('Введи дистанцию!', true); return; }
-  try {
-    await post('/api/workouts/', {
-      date: today.toISOString().slice(0,10),
-      type: 'Swimming',
-      distance_km: dist/1000,
-      duration_min: time || null,
-    });
-    document.getElementById('sw-dist').value='';
-    document.getElementById('sw-time').value='';
+async function logSwim(){
+  const dist=parseFloat(document.getElementById('sw-dist').value);
+  const time=parseFloat(document.getElementById('sw-time').value);
+  if(!dist){toast('Введи дистанцию!',true);return;}
+  try{
+    await post('/api/workouts/',{date:today.toISOString().slice(0,10),type:'Swimming',distance_km:dist/1000,duration_min:time||null});
+    document.getElementById('sw-dist').value='';document.getElementById('sw-time').value='';
+    loadSwimStats();toast(`🏊 ${dist}м записано!`);
+  }catch(e){toast('Ошибка: '+e.message,true);}
+}
+
+// ===== GARMIN =====
+async function garminConnect(){
+  const email=document.getElementById('g-email').value;
+  const pass=document.getElementById('g-pass').value;
+  if(!email||!pass){toast('Введи email и пароль!',true);return;}
+  const btn=document.getElementById('g-connect-btn');
+  btn.disabled=true;btn.textContent='Подключаемся...';
+  try{
+    const r=await post('/api/garmin/connect',{email,password:pass});
+    toast(r.message);document.getElementById('g-sync-btn').style.display='block';
+    document.getElementById('g-dot').style.background='var(--green)';
+    document.getElementById('g-status-text').textContent='Подключён: '+email;
+    document.getElementById('g-status-text').style.color='var(--green)';
+  }catch(e){toast('Ошибка: '+e.message,true);}
+  finally{btn.disabled=false;btn.textContent='Подключить';}
+}
+
+async function garminSync(){
+  const email=document.getElementById('g-email').value;
+  const pass=document.getElementById('g-pass').value;
+  if(!pass){toast('Введи пароль!',true);return;}
+  const btn=document.getElementById('g-sync-btn');
+  btn.disabled=true;btn.textContent='Синхронизируем...';
+  try{
+    const r=await post('/api/garmin/sync?days=14',{email,password:pass});
+    toast(`✅ ${r.synced} тренировок синхронизировано`);
+    document.getElementById('g-result').textContent=`✅ ${r.synced} новых · пропущено: ${r.skipped}`;
     loadSwimStats();
-    toast(`🏊 ${dist}м записано!`);
-  } catch(e) { toast('Ошибка: '+e.message, true); }
+  }catch(e){toast('Ошибка синхронизации',true);document.getElementById('g-result').textContent='❌ '+e.message;}
+  finally{btn.disabled=false;btn.textContent='🔄 Синхронизировать';}
 }
 
-// ============ GARMIN ============
-async function checkGarminStatus() {
-  try {
-    const s = await get('/api/garmin/status');
-    const dot = document.getElementById('g-dot');
-    const txt = document.getElementById('g-status-text');
-    if (s.connected) {
-      dot.className = 'g-dot on';
-      txt.textContent = `Подключён: ${s.email} · Последняя синхр: ${s.last_sync?.slice(0,16)||'—'}`;
-      txt.style.color = 'var(--green)';
-      document.getElementById('g-sync-btn').style.display = 'block';
-      document.getElementById('g-email').value = s.email || '';
-    } else {
-      dot.className = 'g-dot off';
-      txt.textContent = 'Не подключён';
-    }
-  } catch(e) { /* server offline */ }
+// ===== TABS =====
+function setTab(name){
+  ['run','swim','garmin','profile'].forEach(t=>document.getElementById('tab-'+t).style.display=t===name?'block':'none');
+  document.querySelectorAll('.toggle-btn').forEach((b,i)=>b.classList.toggle('active',['run','swim','garmin','profile'][i]===name));
+  if(name==='swim')loadSwimStats();
+  if(name==='run')renderRunPlan();
+  if(name==='profile')renderProfile();
 }
 
-async function garminConnect() {
-  const email = document.getElementById('g-email').value;
-  const pass = document.getElementById('g-pass').value;
-  if (!email || !pass) { toast('Введи email и пароль!', true); return; }
-  const btn = document.getElementById('g-connect-btn');
-  btn.disabled = true; btn.textContent = 'Подключаемся...';
-  try {
-    const r = await post('/api/garmin/connect', {email, password: pass});
-    toast(r.message);
-    document.getElementById('g-result').textContent = r.message;
-    document.getElementById('g-sync-btn').style.display = 'block';
-    checkGarminStatus();
-  } catch(e) {
-    toast('Ошибка: '+e.message, true);
-    document.getElementById('g-result').textContent = '❌ ' + e.message;
-  } finally { btn.disabled=false; btn.textContent='Подключить'; }
+function renderProfile(){
+  const u=CURRENT_USER||{};
+  document.getElementById('profile-card').innerHTML=u.email?
+    `<div class="user-badge" style="margin-bottom:0"><div class="user-avatar">${(u.name||'?')[0].toUpperCase()}</div><div><div class="user-name">${u.name}</div><div class="user-email">${u.email}</div></div><button class="logout-btn" onclick="doLogout()">Выйти</button></div>`:
+    `<div style="text-align:center;padding:16px"><div style="color:var(--muted);margin-bottom:12px">Вы не вошли в аккаунт</div><button class="btn-primary" onclick="showAuth()" style="width:auto;padding:10px 24px">Войти</button></div>`;
 }
 
-async function garminSync() {
-  const email = document.getElementById('g-email').value;
-  const pass = document.getElementById('g-pass').value;
-  if (!email || !pass) { toast('Введи пароль для синхронизации!', true); return; }
-  const btn = document.getElementById('g-sync-btn');
-  btn.disabled=true; btn.textContent='Синхронизируем...';
-  document.getElementById('g-result').innerHTML = '<div class="loading"><div class="spinner"></div>Загружаем тренировки...</div>';
-  try {
-    const r = await post('/api/garmin/sync?days=14', {email, password: pass});
-    toast(`✅ Синхронизировано: ${r.synced} тренировок`);
-    document.getElementById('g-result').textContent = `✅ ${r.synced} новых тренировок · пропущено: ${r.skipped}`;
-    loadSwimStats();
-    loadToday();
-    // Show recent workouts
-    const workouts = await get('/api/workouts/?limit=10');
-    if (workouts.length > 0) {
-      document.getElementById('garmin-workouts-card').style.display = 'block';
-      document.getElementById('garmin-workouts-list').innerHTML = workouts.slice(0,8).map(w =>
-        `<div class="stat-row">
-          <div><div style="font-weight:600">${w.type}</div><div style="font-size:11px;color:var(--muted)">${w.date} · ${w.source}</div></div>
-          <div style="text-align:right">
-            <div style="font-family:var(--font-d);font-size:18px;font-weight:800;color:var(--aqua)">${w.duration_min ? Math.round(w.duration_min)+'мин' : '—'}</div>
-            <div style="font-size:11px;color:var(--muted)">${w.distance_km ? w.distance_km+'км' : ''}</div>
-          </div>
-        </div>`
-      ).join('');
-    }
-  } catch(e) {
-    toast('Ошибка синхронизации', true);
-    document.getElementById('g-result').textContent = '❌ ' + e.message;
-  } finally { btn.disabled=false; btn.textContent='🔄 Синхронизировать'; }
+// ===== MODAL =====
+function openModal(id){
+  document.getElementById(id).classList.add('open');
+  if(id==='plan-edit-modal')openPlanEditor();
+}
+function closeModal(id){document.getElementById(id).classList.remove('open');}
+document.querySelectorAll('.modal-overlay').forEach(m=>{m.addEventListener('click',e=>{if(e.target===m)m.classList.remove('open');});});
+
+// ===== TOAST =====
+function toast(msg,isErr=false){
+  const t=document.getElementById('toast');
+  t.textContent=msg;t.className='toast'+(isErr?' error':'');
+  t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2800);
 }
 
-// ============ TABS ============
-function setTab(name) {
-  ['run','swim','garmin'].forEach(t => {
-    document.getElementById('tab-'+t).style.display = t===name?'block':'none';
-  });
-  document.querySelectorAll('.toggle-btn').forEach((b,i) => {
-    b.classList.toggle('active', ['run','swim','garmin'][i]===name);
-  });
-  if (name==='swim') loadSwimStats();
-  if (name==='garmin') checkGarminStatus();
-}
-
-// ============ MODAL ============
-function openModal(id) { document.getElementById(id).classList.add('open'); }
-function closeModal(id) { document.getElementById(id).classList.remove('open'); }
-document.querySelectorAll('.modal-overlay').forEach(m => {
-  m.addEventListener('click', e => { if(e.target===m) m.classList.remove('open'); });
-});
-
-// ============ TOAST ============
-function toast(msg, isErr=false) {
-  const t = document.getElementById('toast');
-  t.textContent = msg; t.className = 'toast'+(isErr?' error':'');
-  t.classList.add('show');
-  setTimeout(()=>t.classList.remove('show'), 2800);
-}
-
-// ============ INIT ============
-loadToday();
-renderPlan();
+// ===== INIT =====
+init();
 </script>
 </body>
 </html>
