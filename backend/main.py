@@ -57,6 +57,13 @@ app.include_router(auth.router, prefix="/api/auth", tags=["auth"])
 app.include_router(strava.router, prefix="/api/strava", tags=["strava"])
 app.include_router(strava.router, prefix="/api/strava", tags=["strava"])
 
+@app.get("/landing")
+def landing_page():
+    from fastapi.responses import FileResponse
+    import os
+    f = os.path.join(os.path.dirname(__file__), "../frontend/landing.html")
+    return FileResponse(f)
+
 @app.get("/admin")
 def admin_panel():
     from fastapi.responses import FileResponse

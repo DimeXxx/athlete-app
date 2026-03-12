@@ -1,0 +1,484 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SmartFit — AI тренер для спортсменов</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg: #060a0e;
+  --green: #b8ff3d;
+  --orange: #ff6b2b;
+  --teal: #00e5cc;
+  --text: #dde8f2;
+  --muted: #5a7a8a;
+  --card: #0d1520;
+  --border: rgba(255,255,255,0.07);
+  --font-d: 'Bebas Neue', sans-serif;
+  --font-b: 'Manrope', sans-serif;
+}
+
+html { scroll-behavior: smooth; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-b);
+  overflow-x: hidden;
+}
+
+/* ── NOISE TEXTURE ── */
+body::before {
+  content: '';
+  position: fixed; inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E");
+  pointer-events: none; z-index: 0; opacity: .4;
+}
+
+/* ── HERO ── */
+.hero {
+  position: relative; min-height: 100svh;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  text-align: center; padding: 60px 20px 80px;
+  overflow: hidden;
+}
+
+.hero-glow {
+  position: absolute; border-radius: 50%; filter: blur(120px);
+  pointer-events: none;
+}
+.glow-1 { width: 500px; height: 500px; background: rgba(184,255,61,0.07); top: -100px; left: -100px; }
+.glow-2 { width: 400px; height: 400px; background: rgba(0,229,204,0.06); bottom: 0; right: -80px; }
+.glow-3 { width: 300px; height: 300px; background: rgba(255,107,43,0.05); top: 30%; left: 40%; }
+
+.badge {
+  display: inline-flex; align-items: center; gap: 8px;
+  background: rgba(184,255,61,0.08); border: 1px solid rgba(184,255,61,0.2);
+  border-radius: 100px; padding: 6px 16px;
+  font-size: 12px; font-weight: 700; letter-spacing: 1.5px;
+  text-transform: uppercase; color: var(--green);
+  margin-bottom: 24px;
+  animation: fadeDown .6s ease both;
+}
+.badge-dot { width: 6px; height: 6px; background: var(--green); border-radius: 50%; animation: pulse 2s infinite; }
+@keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.5;transform:scale(1.5)} }
+
+h1 {
+  font-family: var(--font-d);
+  font-size: clamp(64px, 15vw, 140px);
+  line-height: .92; letter-spacing: 2px;
+  text-transform: uppercase;
+  animation: fadeUp .7s .1s ease both;
+}
+h1 span { color: var(--green); }
+h1 em { color: var(--teal); font-style: normal; }
+
+.hero-sub {
+  font-size: clamp(15px, 2.5vw, 18px);
+  color: var(--muted); max-width: 480px; line-height: 1.6;
+  margin: 20px auto 40px;
+  animation: fadeUp .7s .2s ease both;
+}
+
+.cta-group {
+  display: flex; gap: 12px; flex-wrap: wrap; justify-content: center;
+  animation: fadeUp .7s .3s ease both;
+}
+.btn-cta {
+  display: inline-flex; align-items: center; gap: 10px;
+  padding: 16px 28px; border-radius: 16px;
+  font-family: var(--font-b); font-size: 15px; font-weight: 700;
+  text-decoration: none; cursor: pointer; border: none;
+  transition: transform .2s, box-shadow .2s;
+}
+.btn-cta:hover { transform: translateY(-2px); }
+.btn-main {
+  background: var(--green); color: #060a0e;
+  box-shadow: 0 0 40px rgba(184,255,61,0.25);
+}
+.btn-main:hover { box-shadow: 0 0 60px rgba(184,255,61,0.4); }
+.btn-ghost {
+  background: rgba(255,255,255,0.05); color: var(--text);
+  border: 1px solid var(--border);
+}
+
+/* phone mockup */
+.phone-wrap {
+  position: relative; margin-top: 60px;
+  animation: fadeUp .8s .4s ease both;
+}
+.phone {
+  width: 220px; height: 420px;
+  background: linear-gradient(160deg, #111c2a, #0a1018);
+  border-radius: 36px; border: 1.5px solid rgba(255,255,255,0.12);
+  box-shadow: 0 40px 80px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.04);
+  overflow: hidden; position: relative;
+  display: flex; flex-direction: column;
+}
+.phone-notch {
+  width: 80px; height: 24px;
+  background: #060a0e; border-radius: 0 0 18px 18px;
+  margin: 0 auto; flex-shrink: 0;
+}
+.phone-screen {
+  flex: 1; padding: 12px;
+  display: flex; flex-direction: column; gap: 8px;
+}
+.ph-header { font-family: var(--font-d); font-size: 18px; color: var(--green); letter-spacing: 1px; }
+.ph-score {
+  background: linear-gradient(135deg, rgba(184,255,61,0.1), rgba(0,229,204,0.05));
+  border: 1px solid rgba(184,255,61,0.15); border-radius: 14px; padding: 10px 12px;
+}
+.ph-score-num { font-family: var(--font-d); font-size: 38px; color: var(--green); line-height: 1; }
+.ph-score-lbl { font-size: 9px; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; }
+.ph-row { display: flex; gap: 6px; }
+.ph-card {
+  flex: 1; background: rgba(255,255,255,0.04); border: 1px solid var(--border);
+  border-radius: 10px; padding: 8px;
+}
+.ph-card-v { font-size: 14px; font-weight: 700; }
+.ph-card-l { font-size: 8px; color: var(--muted); margin-top: 2px; }
+.ph-workout {
+  background: rgba(255,255,255,0.03); border-radius: 10px; padding: 8px 10px;
+  display: flex; align-items: center; gap: 8px;
+}
+.ph-wicon { width: 24px; height: 24px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 12px; }
+.ph-wtext { flex: 1; }
+.ph-wname { font-size: 10px; font-weight: 700; }
+.ph-wval { font-size: 9px; color: var(--muted); }
+.phone-nav {
+  display: flex; justify-content: space-around; padding: 8px 0 12px;
+  border-top: 1px solid var(--border);
+}
+.ph-nav-item { font-size: 8px; color: var(--muted); text-align: center; }
+.ph-nav-item.active { color: var(--green); }
+.ph-nav-icon { font-size: 14px; display: block; margin-bottom: 2px; }
+
+/* ── FEATURES ── */
+.section { padding: 80px 20px; max-width: 900px; margin: 0 auto; }
+.section-label {
+  font-size: 11px; font-weight: 700; letter-spacing: 2px;
+  text-transform: uppercase; color: var(--teal); margin-bottom: 12px;
+}
+.section-title {
+  font-family: var(--font-d); font-size: clamp(36px, 8vw, 72px);
+  text-transform: uppercase; line-height: .95; margin-bottom: 40px;
+}
+
+.features-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 16px; }
+.feat {
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: 20px; padding: 24px;
+  position: relative; overflow: hidden;
+  transition: border-color .3s, transform .2s;
+}
+.feat:hover { border-color: rgba(184,255,61,0.2); transform: translateY(-3px); }
+.feat::before {
+  content: ''; position: absolute; top: 0; left: 0; right: 0; height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(184,255,61,0.3), transparent);
+  opacity: 0; transition: opacity .3s;
+}
+.feat:hover::before { opacity: 1; }
+.feat-icon {
+  width: 48px; height: 48px; border-radius: 14px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 22px; margin-bottom: 14px;
+}
+.feat h3 { font-size: 16px; font-weight: 700; margin-bottom: 6px; }
+.feat p { font-size: 13px; color: var(--muted); line-height: 1.6; }
+.feat-tag {
+  display: inline-block; margin-top: 12px;
+  padding: 3px 10px; border-radius: 6px; font-size: 10px; font-weight: 700;
+}
+
+/* ── INSTALL STEPS ── */
+.install-section { padding: 60px 20px; background: rgba(255,255,255,0.015); }
+.install-inner { max-width: 700px; margin: 0 auto; }
+.steps { display: flex; flex-direction: column; gap: 0; margin-top: 32px; }
+.step {
+  display: flex; gap: 20px; align-items: flex-start;
+  padding: 20px 0; position: relative;
+}
+.step:not(:last-child)::after {
+  content: ''; position: absolute; left: 19px; top: 52px;
+  width: 2px; bottom: 0;
+  background: linear-gradient(to bottom, rgba(184,255,61,0.2), transparent);
+}
+.step-num {
+  width: 40px; height: 40px; border-radius: 50%; flex-shrink: 0;
+  background: rgba(184,255,61,0.1); border: 1.5px solid rgba(184,255,61,0.3);
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--font-d); font-size: 18px; color: var(--green);
+}
+.step-body h4 { font-size: 16px; font-weight: 700; margin-bottom: 4px; }
+.step-body p { font-size: 13px; color: var(--muted); line-height: 1.6; }
+.step-os { display: flex; gap: 16px; margin-top: 10px; flex-wrap: wrap; }
+.os-card {
+  background: rgba(255,255,255,0.04); border: 1px solid var(--border);
+  border-radius: 12px; padding: 10px 14px; font-size: 12px;
+}
+.os-card b { display: block; font-size: 13px; margin-bottom: 2px; }
+.os-card span { color: var(--muted); }
+
+/* ── SPORTS ── */
+.sports-row { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 16px; }
+.sport-pill {
+  display: flex; align-items: center; gap: 8px;
+  background: rgba(255,255,255,0.04); border: 1px solid var(--border);
+  border-radius: 100px; padding: 8px 16px;
+  font-size: 13px; font-weight: 600;
+}
+
+/* ── FOOTER ── */
+footer {
+  text-align: center; padding: 40px 20px;
+  border-top: 1px solid var(--border);
+  color: var(--muted); font-size: 13px;
+}
+footer a { color: var(--green); text-decoration: none; font-weight: 700; }
+
+/* ── ANIMATIONS ── */
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(24px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes fadeDown {
+  from { opacity: 0; transform: translateY(-12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.reveal {
+  opacity: 0; transform: translateY(30px);
+  transition: opacity .6s ease, transform .6s ease;
+}
+.reveal.visible { opacity: 1; transform: translateY(0); }
+
+/* ── DIVIDER ── */
+.divider {
+  height: 1px; max-width: 900px; margin: 0 auto;
+  background: linear-gradient(90deg, transparent, var(--border), transparent);
+}
+</style>
+</head>
+<body>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="hero-glow glow-1"></div>
+  <div class="hero-glow glow-2"></div>
+  <div class="hero-glow glow-3"></div>
+
+  <div class="badge"><span class="badge-dot"></span> Бесплатно · Без скачивания</div>
+
+  <h1>Smart<span>Fit</span><br><em>Train</em>er</h1>
+  <p class="hero-sub">AI-тренер для бегунов и пловцов. Синхронизация с Garmin и Strava, анализ тренировок, план подготовки к гонке.</p>
+
+  <div class="cta-group">
+    <a href="https://smartfit.up.railway.app" class="btn-cta btn-main" target="_blank">
+      🚀 Открыть приложение
+    </a>
+    <a href="#install" class="btn-cta btn-ghost">
+      📱 Добавить на экран
+    </a>
+  </div>
+
+  <!-- Phone mockup -->
+  <div class="phone-wrap">
+    <div class="phone">
+      <div class="phone-notch"></div>
+      <div class="phone-screen">
+        <div class="ph-header">СЕГОДНЯ</div>
+        <div class="ph-score">
+          <div class="ph-score-num">87</div>
+          <div class="ph-score-lbl">⚡ Готовность</div>
+        </div>
+        <div class="ph-row">
+          <div class="ph-card"><div class="ph-card-v" style="color:#00e5cc">7.2ч</div><div class="ph-card-l">😴 Сон</div></div>
+          <div class="ph-card"><div class="ph-card-v" style="color:#b8ff3d">52</div><div class="ph-card-l">💜 HRV</div></div>
+          <div class="ph-card"><div class="ph-card-v" style="color:#ff6b2b">44</div><div class="ph-card-l">❤️ ЧСС</div></div>
+        </div>
+        <div class="ph-workout">
+          <div class="ph-wicon" style="background:rgba(184,255,61,0.15)">🏃</div>
+          <div class="ph-wtext">
+            <div class="ph-wname">Бег 12 км</div>
+            <div class="ph-wval">5:24/км · ЧСС 148</div>
+          </div>
+        </div>
+        <div class="ph-workout">
+          <div class="ph-wicon" style="background:rgba(0,229,204,0.15)">🏊</div>
+          <div class="ph-wtext">
+            <div class="ph-wname">Плавание 2км</div>
+            <div class="ph-wval">42 мин · 1800 ккал</div>
+          </div>
+        </div>
+      </div>
+      <div class="phone-nav">
+        <div class="ph-nav-item active"><span class="ph-nav-icon">🏠</span>Сегодня</div>
+        <div class="ph-nav-item"><span class="ph-nav-icon">💪</span>Трен.</div>
+        <div class="ph-nav-item"><span class="ph-nav-icon">🤖</span>AI</div>
+        <div class="ph-nav-item"><span class="ph-nav-icon">📊</span>Итоги</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<!-- FEATURES -->
+<section class="section reveal">
+  <div class="section-label">Возможности</div>
+  <div class="section-title">Всё что нужно<br>спортсмену</div>
+
+  <div class="features-grid">
+    <div class="feat reveal">
+      <div class="feat-icon" style="background:rgba(184,255,61,0.1)">🤖</div>
+      <h3>AI-тренер</h3>
+      <p>Персональный анализ каждой тренировки, советы по восстановлению, план на день и неделю. Знает твой профиль и цель.</p>
+      <span class="feat-tag" style="background:rgba(184,255,61,0.1);color:var(--green)">Claude AI</span>
+    </div>
+
+    <div class="feat reveal">
+      <div class="feat-icon" style="background:rgba(0,229,204,0.1)">⌚</div>
+      <h3>Garmin синхронизация</h3>
+      <p>Автоматически тянет тренировки, сон, HRV, ЧСС покоя и вес каждые 6 часов. Полная история активности.</p>
+      <span class="feat-tag" style="background:rgba(0,229,204,0.1);color:var(--teal)">Авто-синк</span>
+    </div>
+
+    <div class="feat reveal">
+      <div class="feat-icon" style="background:rgba(255,107,43,0.1)">🟠</div>
+      <h3>Strava синхронизация</h3>
+      <p>OAuth подключение к Strava — все активности загружаются в один клик. Бег, плавание, велосипед и другое.</p>
+      <span class="feat-tag" style="background:rgba(255,107,43,0.1);color:var(--orange)">OAuth 2.0</span>
+    </div>
+
+    <div class="feat reveal">
+      <div class="feat-icon" style="background:rgba(245,200,66,0.1)">🏁</div>
+      <h3>План к гонке</h3>
+      <p>Укажи дату и дистанцию — приложение строит недельный план и отсчитывает дни до старта. Полумарафон, марафон, триатлон.</p>
+      <span class="feat-tag" style="background:rgba(245,200,66,0.1);color:#f5c842">Умный план</span>
+    </div>
+
+    <div class="feat reveal">
+      <div class="feat-icon" style="background:rgba(184,255,61,0.1)">🍽️</div>
+      <h3>Трекер питания</h3>
+      <p>Логируй приёмы пищи, следи за белком, углеводами и жирами. Цели питания подстраиваются под твои тренировки.</p>
+      <span class="feat-tag" style="background:rgba(184,255,61,0.1);color:var(--green)">БЖУ + ккал</span>
+    </div>
+
+    <div class="feat reveal">
+      <div class="feat-icon" style="background:rgba(0,229,204,0.1)">📊</div>
+      <h3>Training Hub</h3>
+      <p>Статистика по неделе, месяцу, кварталу и году. Темп, пульс, каденс, набор высоты. AI-разбор каждой тренировки.</p>
+      <span class="feat-tag" style="background:rgba(0,229,204,0.1);color:var(--teal)">Аналитика</span>
+    </div>
+  </div>
+
+  <!-- Sports -->
+  <div style="margin-top:40px" class="reveal">
+    <div class="section-label">Поддерживаемые виды спорта</div>
+    <div class="sports-row">
+      <div class="sport-pill">🏃 Бег</div>
+      <div class="sport-pill">🏊 Плавание</div>
+      <div class="sport-pill">🚴 Велосипед</div>
+      <div class="sport-pill">🚶 Ходьба</div>
+      <div class="sport-pill">🏋️ Силовые</div>
+      <div class="sport-pill">🥾 Хайкинг</div>
+    </div>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<!-- INSTALL -->
+<section class="install-section" id="install">
+  <div class="install-inner">
+    <div class="section-label reveal">Установка</div>
+    <div class="section-title reveal">Добавь на экран<br>телефона</div>
+    <p style="color:var(--muted);font-size:14px;margin-top:-20px;margin-bottom:8px" class="reveal">
+      SmartFit — это PWA. Работает как обычное приложение, без скачивания из магазина.
+    </p>
+
+    <div class="steps">
+
+      <div class="step reveal">
+        <div class="step-num">1</div>
+        <div class="step-body">
+          <h4>Открой приложение в браузере</h4>
+          <p>Перейди по ссылке <strong style="color:var(--green)">smartfit.up.railway.app</strong> — в браузере телефона (Safari на iPhone, Chrome на Android).</p>
+        </div>
+      </div>
+
+      <div class="step reveal">
+        <div class="step-num">2</div>
+        <div class="step-body">
+          <h4>Зарегистрируйся</h4>
+          <p>Создай аккаунт по email — займёт 30 секунд. Все данные хранятся в облаке, доступны с любого устройства.</p>
+        </div>
+      </div>
+
+      <div class="step reveal">
+        <div class="step-num">3</div>
+        <div class="step-body">
+          <h4>Добавь на главный экран</h4>
+          <div class="step-os">
+            <div class="os-card">
+              <b>🍎 iPhone (Safari)</b>
+              <span>Нажми <strong>Поделиться</strong> (⬆️) внизу экрана → <strong>"На экран «Домой»"</strong> → Добавить</span>
+            </div>
+            <div class="os-card">
+              <b>🤖 Android (Chrome)</b>
+              <span>Нажми <strong>⋮ меню</strong> (три точки) → <strong>"Добавить на главный экран"</strong> → Установить</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="step reveal">
+        <div class="step-num">4</div>
+        <div class="step-body">
+          <h4>Подключи Garmin или Strava</h4>
+          <p>Перейди в <strong>Прогресс → Garmin</strong> или <strong>Strava</strong> и подключи аккаунт. Тренировки загрузятся автоматически за последние 30 дней.</p>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<!-- FREE -->
+<section class="section" style="text-align:center" >
+  <div class="reveal">
+    <div class="section-label" style="text-align:center">Доступ</div>
+    <div class="section-title" style="text-align:center">Полностью<br><span style="color:var(--green)">бесплатно</span></div>
+    <p style="color:var(--muted);max-width:440px;margin:0 auto 32px;font-size:15px;line-height:1.7">
+      Все функции открыты без ограничений. Просто создай аккаунт и тренируйся умнее.
+    </p>
+    <a href="https://smartfit.up.railway.app" class="btn-cta btn-main" target="_blank" style="font-size:16px;padding:18px 36px">
+      🏃 Начать тренироваться
+    </a>
+  </div>
+</section>
+
+<footer>
+  <p>SmartFit · AI-тренер для спортсменов · <a href="https://smartfit.up.railway.app" target="_blank">smartfit.up.railway.app</a></p>
+  <p style="margin-top:6px;font-size:12px">Синхронизация с Garmin · Strava · AI-анализ · PWA</p>
+</footer>
+
+<script>
+// Scroll reveal
+const observer = new IntersectionObserver(entries => {
+  entries.forEach(e => {
+    if(e.isIntersecting) { e.target.classList.add('visible'); }
+  });
+}, { threshold: 0.1 });
+
+document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
+</script>
+</body>
+</html>
