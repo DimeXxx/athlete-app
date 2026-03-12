@@ -248,15 +248,23 @@ body{background:var(--bg);color:var(--text);font-family:var(--font-b);min-height
   <div id="tab-garmin" style="display:none">
     <div class="card">
       <div class="card-title">Garmin Connect</div>
-      <div style="display:flex;align-items:center;gap:10px;padding:12px 0">
-        <div class="g-dot" id="g-dot" style="width:10px;height:10px;border-radius:50%;background:var(--muted)"></div>
-        <div id="g-status-text" style="font-size:14px;color:var(--muted)">Не подключён</div>
+      <div style="display:flex;align-items:center;gap:10px;padding:12px 0 16px">
+        <div id="g-dot" style="width:10px;height:10px;border-radius:50%;background:var(--muted);flex-shrink:0"></div>
+        <div>
+          <div id="g-status-text" style="font-size:14px;color:var(--muted)">Не подключён</div>
+          <div id="g-last-sync" style="font-size:11px;color:var(--muted)"></div>
+        </div>
       </div>
-      <div class="input-group"><label class="input-label">Garmin Email</label><input class="input-field" id="g-email" type="email" placeholder="your@email.com"></div>
-      <div class="input-group"><label class="input-label">Пароль</label><input class="input-field" id="g-pass" type="password" placeholder="••••••••"></div>
-      <div style="display:flex;gap:10px;margin-top:12px">
+      <div id="g-saved-banner" style="display:none;background:rgba(0,230,118,0.08);border:1px solid rgba(0,230,118,0.2);border-radius:10px;padding:10px 14px;margin-bottom:12px;font-size:13px;color:var(--green)">
+        ✅ Логин сохранён — синхронизация происходит автоматически
+      </div>
+      <div id="g-creds-form">
+        <div class="input-group"><label class="input-label">Garmin Email</label><input class="input-field" id="g-email" type="email" placeholder="your@email.com"></div>
+        <div class="input-group"><label class="input-label">Пароль</label><input class="input-field" id="g-pass" type="password" placeholder="••••••••"></div>
+      </div>
+      <div style="display:flex;gap:10px;margin-top:12px;flex-wrap:wrap">
         <button onclick="garminConnect()" id="g-connect-btn" style="padding:12px 20px;background:rgba(59,158,255,.15);border:1px solid rgba(59,158,255,.3);border-radius:10px;color:var(--blue);font-family:var(--font-d);font-size:15px;font-weight:700;cursor:pointer">Подключить</button>
-        <button onclick="garminSync()" id="g-sync-btn" style="display:none;padding:12px 20px;background:rgba(59,158,255,.15);border:1px solid rgba(59,158,255,.3);border-radius:10px;color:var(--blue);font-family:var(--font-d);font-size:15px;font-weight:700;cursor:pointer">🔄 Синхронизировать</button>
+        <button onclick="garminSync()" id="g-sync-btn" style="padding:12px 20px;background:rgba(0,229,204,.15);border:1px solid rgba(0,229,204,.3);border-radius:10px;color:var(--aqua);font-family:var(--font-d);font-size:15px;font-weight:700;cursor:pointer">🔄 Синхронизировать</button>
       </div>
       <div id="g-result" style="margin-top:12px;font-size:13px;color:var(--muted)"></div>
     </div>
@@ -629,6 +637,23 @@ async function logSwim(){
 }
 
 // ===== GARMIN =====
+async function loadGarminStatus(){
+  try{
+    const s=await get('/api/garmin/status');
+    if(s.connected){
+      document.getElementById('g-dot').style.background='var(--green)';
+      document.getElementById('g-status-text').textContent='Подключён: '+s.email;
+      document.getElementById('g-status-text').style.color='var(--green)';
+      document.getElementById('g-email').value=s.email;
+      document.getElementById('g-saved-banner').style.display='block';
+      if(s.last_sync){
+        const d=new Date(s.last_sync);
+        document.getElementById('g-last-sync').textContent='Последняя синхронизация: '+d.toLocaleString('ru');
+      }
+    }
+  }catch(e){}
+}
+
 async function garminConnect(){
   const email=document.getElementById('g-email').value;
   const pass=document.getElementById('g-pass').value;
@@ -648,13 +673,14 @@ async function garminConnect(){
 async function garminSync(){
   const email=document.getElementById('g-email').value;
   const pass=document.getElementById('g-pass').value;
-  if(!email||!pass){toast('Введи email и пароль!',true);return;}
-  if(!TOKEN){toast('Сначала войди в аккаунт!',true);return;}
+  // Allow sync with empty pass if credentials are saved on server
+  if(!email){toast('Введи Garmin email!',true);return;}
   const btn=document.getElementById('g-sync-btn');
   btn.disabled=true;btn.textContent='Синхронизируем...';
   document.getElementById('g-result').innerHTML='<div style="color:var(--muted)">Загружаем тренировки из Garmin...</div>';
   try{
-    const r=await post('/api/garmin/sync?days=14',{email,password:pass});
+    const body=pass?{email,password:pass}:{email,password:''};
+    const r=await post('/api/garmin/sync?days=14',body);
     toast(`✅ ${r.synced} тренировок синхронизировано`);
     document.getElementById('g-result').textContent=`✅ ${r.synced} новых · пропущено: ${r.skipped}`;
     loadSwimStats();
@@ -670,6 +696,7 @@ function setTab(name){
   if(name==='swim')loadSwimStats();
   if(name==='run'){loadRunStats();renderRunPlan();}
   if(name==='profile')renderProfile();
+  if(name==='garmin')loadGarminStatus();
 }
 
 async function loadRunStats(){
