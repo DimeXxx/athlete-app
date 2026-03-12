@@ -380,8 +380,21 @@ body{background:var(--bg);color:var(--text);font-family:var(--font-b);min-height
   <button class="nav-btn active" onclick="switchScreen('today')" id="nav-today"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>Сегодня</button>
   <button class="nav-btn" onclick="switchScreen('plan')" id="nav-plan"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>План</button>
   <button class="nav-btn" onclick="switchScreen('nutrition')" id="nav-nutrition"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8h1a4 4 0 0 1 0 8h-1"/><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/><line x1="6" y1="1" x2="6" y2="4"/><line x1="10" y1="1" x2="10" y2="4"/><line x1="14" y1="1" x2="14" y2="4"/></svg>Питание</button>
+  <button class="nav-btn" onclick="switchScreen('dash')" id="nav-dash"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/><polyline points="7 10 10 7 13 10 17 6"/></svg>Итоги</button>
   <button class="nav-btn" onclick="switchScreen('stats')" id="nav-stats"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>Прогресс</button>
 </nav>
+
+<!-- DASHBOARD SCREEN -->
+<div class="screen" id="screen-dash">
+  <div class="screen-title">СТАТИСТИКА</div>
+  <div class="screen-sub">Общая картина</div>
+  <div class="toggle-row" style="margin-bottom:16px">
+    <button class="toggle-btn active" onclick="setDashPeriod('week')"  id="dp-week">Неделя</button>
+    <button class="toggle-btn"        onclick="setDashPeriod('month')" id="dp-month">Месяц</button>
+    <button class="toggle-btn"        onclick="setDashPeriod('year')"  id="dp-year">Год</button>
+  </div>
+  <div id="dash-content"><div class="loading"><div class="spinner"></div>Загрузка...</div></div>
+</div>
 
 </div><!-- /app -->
 
@@ -594,6 +607,7 @@ function switchScreen(name){
   document.getElementById('nav-'+name).classList.add('active');
   if(name==='nutrition')loadNutrition();
   if(name==='stats'){loadSwimStats();renderRunPlan();}
+  if(name==='dash')loadDashboard();
 }
 
 // ===== TODAY =====
@@ -1140,6 +1154,138 @@ function toast(msg,isErr=false){
   const t=document.getElementById('toast');
   t.textContent=msg;t.className='toast'+(isErr?' error':'');
   t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2800);
+}
+
+// ===== DASHBOARD =====
+let dashPeriod = 'week';
+
+function setDashPeriod(p){
+  dashPeriod = p;
+  ['week','month','year'].forEach(k=>{
+    document.getElementById('dp-'+k)?.classList.toggle('active', k===p);
+  });
+  loadDashboard();
+}
+
+async function loadDashboard(){
+  const el = document.getElementById('dash-content');
+  if(!el) return;
+  el.innerHTML = '<div class="loading"><div class="spinner"></div>Загрузка...</div>';
+  try{
+    const d = await get('/api/health/dashboard?period='+dashPeriod);
+    const t = d.totals||{};
+    const n = d.nutrition||{};
+    const s = d.steps||{};
+    const g = d.goals||{};
+    const periodLabel = {week:'за неделю',month:'за месяц',year:'за год'}[dashPeriod];
+    const calGoal = parseInt(g.calories_target||2300);
+    const stepsGoal = parseInt(g.steps_target||10000);
+
+    // Total calories burned estimate
+    const workoutCals = t.workout_cals||0;
+    const stepsCalsTotal = (s.avg_steps||0) * 0.04 * ((parseFloat(g.weight_kg)||70)/70);
+    const days = {week:7,month:30,year:365}[dashPeriod];
+    const bmr = Math.round(1800 * days); // rough BMR
+    const totalBurned = Math.round(workoutCals + stepsCalsTotal * days);
+    const totalEaten = Math.round((n.avg_cal||0) * (n.days_logged||0));
+    const balance = totalEaten - totalBurned;
+
+    let html = '';
+
+    // --- BIG SUMMARY CARDS ---
+    html += `<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
+      <div class="kpi" style="--accent:var(--orange)">
+        <div class="kpi-label">Тренировок</div>
+        <div class="kpi-value">${t.total_workouts||0}</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:4px">${t.total_mins||0} мин · ${t.total_km||0} км</div>
+      </div>
+      <div class="kpi" style="--accent:var(--green)">
+        <div class="kpi-label">Шагов среднее</div>
+        <div class="kpi-value">${Math.round(s.avg_steps||0).toLocaleString()}</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:4px">${Math.round((s.avg_steps||0)/stepsGoal*100)}% от цели</div>
+      </div>
+      <div class="kpi" style="--accent:var(--yellow)">
+        <div class="kpi-label">Ккал съедено/день</div>
+        <div class="kpi-value">${n.avg_cal||0}</div>
+        <div style="font-size:11px;color:${(n.avg_cal||0)>=calGoal*0.9?'var(--green)':'var(--red)'};margin-top:4px">цель: ${calGoal}</div>
+      </div>
+      <div class="kpi" style="--accent:var(--blue)">
+        <div class="kpi-label">Белок/день</div>
+        <div class="kpi-value">${n.avg_prot||0}г</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:4px">цель: ${g.protein_target||150}г</div>
+      </div>
+    </div>`;
+
+    // --- CALORIE BALANCE ---
+    const balColor = balance < 0 ? 'var(--green)' : balance < 500 ? 'var(--yellow)' : 'var(--red)';
+    html += `<div class="card" style="margin-bottom:12px">
+      <div class="card-title">Энергетический баланс ${periodLabel}</div>
+      <div style="display:flex;gap:12px;flex-wrap:wrap">
+        <div style="flex:1;min-width:100px;text-align:center;background:var(--bg3);border-radius:10px;padding:12px">
+          <div style="font-size:11px;color:var(--muted);margin-bottom:4px">🍽️ Съедено</div>
+          <div style="font-family:var(--font-d);font-size:22px;font-weight:900;color:var(--yellow)">${totalEaten.toLocaleString()}</div>
+          <div style="font-size:10px;color:var(--muted)">ккал</div>
+        </div>
+        <div style="flex:1;min-width:100px;text-align:center;background:var(--bg3);border-radius:10px;padding:12px">
+          <div style="font-size:11px;color:var(--muted);margin-bottom:4px">🔥 Сожжено</div>
+          <div style="font-family:var(--font-d);font-size:22px;font-weight:900;color:var(--orange)">${totalBurned.toLocaleString()}</div>
+          <div style="font-size:10px;color:var(--muted)">трен + шаги</div>
+        </div>
+        <div style="flex:1;min-width:100px;text-align:center;background:var(--bg3);border-radius:10px;padding:12px">
+          <div style="font-size:11px;color:var(--muted);margin-bottom:4px">${balance>0?'📈 Профицит':'📉 Дефицит'}</div>
+          <div style="font-family:var(--font-d);font-size:22px;font-weight:900;color:${balColor}">${Math.abs(balance).toLocaleString()}</div>
+          <div style="font-size:10px;color:var(--muted)">ккал</div>
+        </div>
+      </div>
+    </div>`;
+
+    // --- WORKOUTS BY TYPE ---
+    if(d.workouts && d.workouts.length > 0){
+      const typeIcons={'Swimming':'🏊','Running':'🏃','RunLong':'🏃','FunctionalStrengthTraining':'💪','Cycling':'🚴','Walking':'🚶','Other':'🏋️'};
+      const typeColors={'Swimming':'var(--blue)','Running':'var(--orange)','RunLong':'var(--yellow)','FunctionalStrengthTraining':'var(--aqua)','Cycling':'var(--green)'};
+      html += `<div class="card" style="margin-bottom:12px"><div class="card-title">По видам активности</div>`;
+      d.workouts.forEach(w=>{
+        const icon = typeIcons[w.type]||'🏋️';
+        const color = typeColors[w.type]||'var(--muted)';
+        html += `<div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--border)">
+          <div style="font-size:20px;width:28px">${icon}</div>
+          <div style="flex:1">
+            <div style="font-family:var(--font-d);font-size:16px;font-weight:800;color:${color}">${w.type}</div>
+            <div style="font-size:11px;color:var(--muted)">${w.km||0} км · ${w.mins||0} мин · ${w.cals||0} ккал</div>
+          </div>
+          <div style="font-family:var(--font-d);font-size:22px;font-weight:900;color:${color}">${w.cnt}x</div>
+        </div>`;
+      });
+      html += `</div>`;
+    }
+
+    // --- DAILY CHART (simple bars) ---
+    if(d.chart && d.chart.length > 1){
+      const maxSteps = Math.max(...d.chart.map(r=>r.steps||0), 1);
+      const maxKm = Math.max(...d.chart.map(r=>r.km||0), 1);
+      html += `<div class="card"><div class="card-title">Активность по дням</div>
+        <div style="display:flex;align-items:flex-end;gap:3px;height:60px;margin-bottom:6px">`;
+      d.chart.slice(-14).forEach(r=>{
+        const stPct = Math.round((r.steps||0)/maxSteps*100);
+        const kmPct = Math.round((r.km||0)/maxKm*100);
+        const dateStr = new Date(r.date).toLocaleDateString('ru',{day:'numeric'});
+        html += `<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;height:100%;justify-content:flex-end">
+          <div style="width:100%;background:var(--orange);border-radius:2px 2px 0 0;height:${kmPct}%;min-height:${kmPct>0?2:0}px" title="${r.km}км"></div>
+          <div style="width:100%;background:rgba(0,230,118,0.5);border-radius:2px 2px 0 0;height:${Math.round(stPct*0.4)}%;min-height:${stPct>0?1:0}px" title="${r.steps} шагов"></div>
+        </div>`;
+      });
+      html += `</div>
+        <div style="display:flex;gap:12px;font-size:10px;color:var(--muted)">
+          <span style="display:flex;align-items:center;gap:4px"><span style="width:10px;height:10px;background:var(--orange);border-radius:2px;display:inline-block"></span>Км бега/плавания</span>
+          <span style="display:flex;align-items:center;gap:4px"><span style="width:10px;height:10px;background:rgba(0,230,118,0.5);border-radius:2px;display:inline-block"></span>Шаги</span>
+        </div>
+      </div>`;
+    }
+
+    el.innerHTML = html;
+  }catch(e){
+    el.innerHTML = `<div style="color:var(--muted);padding:20px;text-align:center">Ошибка загрузки: ${e.message}</div>`;
+  }
 }
 
 // ===== SETUP WIZARD =====
