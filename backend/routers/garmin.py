@@ -143,7 +143,26 @@ def garmin_sync(creds: Optional[GarminCredentials] = None, days: int = 14,
         email, password = creds.email, creds.password
         save_garmin_creds(uid, email, password, db)
     synced, skipped, total = do_sync(uid, email, password, days, db)
-    return {"message": "Синхронизация завершена!", "synced": synced, "skipped": skipped, "total": total}
+    # Sync daily steps
+    steps_synced = 0
+    try:
+        steps_data = client.get_steps_data(start_date.isoformat(), end_date.isoformat())
+        for day in (steps_data or []):
+            day_date = str(day.get("calendarDate", ""))[:10]
+            steps = day.get("totalSteps") or day.get("steps")
+            if day_date and steps:
+                db.execute(
+                    "INSERT INTO health_metrics (user_id, date, steps) VALUES (?,?,?) "
+                    "ON CONFLICT(user_id, date) DO UPDATE SET steps=COALESCE(excluded.steps,steps)",
+                    (uid, day_date, steps)
+                )
+                steps_synced += 1
+        db.commit()
+    except Exception:
+        pass
+
+    return {"message": "Синхронизация завершена!", "synced": synced, "skipped": skipped,
+            "total": total, "steps_synced": steps_synced}
 
 @router.post("/auto-sync")
 def auto_sync_all(db=Depends(get_db)):

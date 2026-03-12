@@ -213,6 +213,7 @@ body{background:var(--bg);color:var(--text);font-family:var(--font-b);min-height
   <div class="toggle-row">
     <button class="toggle-btn active" onclick="setTab('run')">🏃 Бег</button>
     <button class="toggle-btn" onclick="setTab('swim')">🏊 Плавание</button>
+    <button class="toggle-btn" onclick="setTab('steps')">👟 Шаги</button>
     <button class="toggle-btn" onclick="setTab('ai')">🤖 AI</button>
     <button class="toggle-btn" onclick="setTab('garmin')">Garmin</button>
     <button class="toggle-btn" onclick="setTab('profile')">Профиль</button>
@@ -271,6 +272,28 @@ body{background:var(--bg);color:var(--text);font-family:var(--font-b);min-height
       </div>
     </div>
     <div id="ai-loading" style="display:none" class="loading"><div class="spinner"></div>AI анализирует твои данные...</div>
+  </div>
+  <div id="tab-steps" style="display:none">
+    <div class="card">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+        <div class="card-title" style="margin-bottom:0">Шаги</div>
+        <select id="steps-period" onchange="loadSteps()" style="background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:6px 10px;color:var(--text);font-size:12px;outline:none">
+          <option value="week" selected>7 дней</option>
+          <option value="month">30 дней</option>
+          <option value="3month">3 месяца</option>
+          <option value="year">Год</option>
+        </select>
+      </div>
+      <div id="steps-content"><div class="loading"><div class="spinner"></div></div></div>
+    </div>
+    <div class="card">
+      <div class="card-title">Добавить шаги вручную</div>
+      <div class="input-row">
+        <div class="input-group"><label class="input-label">Дата</label><input class="input-field" id="steps-date" type="date"></div>
+        <div class="input-group"><label class="input-label">Шагов</label><input class="input-field" id="steps-count" type="number" placeholder="8000"></div>
+      </div>
+      <button class="btn-primary" onclick="logSteps()">ЗАПИСАТЬ</button>
+    </div>
   </div>
   <div id="tab-swim" style="display:none">
     <div class="card">
@@ -593,6 +616,35 @@ async function loadToday(){
   const done=doneWorkouts.includes(0);
   const garminBadge=garminDone?`<div style="font-size:10px;color:var(--green);margin-top:2px">✅ Из Garmin</div>`:'';
   const workoutHtml=`<div class="workout-block ${done?'done':''}" onclick="toggleDone(0)"><div class="wb-icon" style="background:${bgMap[plan.type]||'var(--bg3)'}">${plan.icon}</div><div class="wb-info"><div class="wb-name">${plan.label}</div><div class="wb-detail">${plan.detail}</div>${garminBadge}</div><div class="wb-check">${done?'✓':''}</div></div>`;
+  // Load steps
+  let stepsHtml='';
+  try{
+    const health=await get('/api/health/today');
+    const steps=health.metrics?.steps||0;
+    const stepsCal=health.metrics?.steps_calories||0;
+    const stepsGoal=parseInt(health.goals?.steps_target||10000);
+    const stepsPct=Math.min(100,Math.round(steps/stepsGoal*100));
+    const stepsColor=stepsPct>=100?'var(--green)':stepsPct>=70?'var(--yellow)':'var(--blue)';
+    stepsHtml=`<div class="card" style="margin-top:12px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+        <div class="card-title" style="margin-bottom:0">Шаги сегодня</div>
+        <div style="font-size:11px;color:var(--muted)">цель: ${stepsGoal.toLocaleString()}</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:14px">
+        <div>
+          <div style="font-family:var(--font-d);font-size:40px;font-weight:900;color:${stepsColor};line-height:1">${steps.toLocaleString()}</div>
+          <div style="font-size:12px;color:var(--muted);margin-top:3px">≈ ${stepsCal} ккал</div>
+        </div>
+        <div style="flex:1">
+          <div style="background:rgba(255,255,255,0.05);border-radius:6px;height:10px;overflow:hidden">
+            <div style="width:${stepsPct}%;height:100%;background:linear-gradient(90deg,${stepsColor},var(--aqua));border-radius:6px;transition:width .8s"></div>
+          </div>
+          <div style="font-size:12px;color:${stepsColor};margin-top:5px;font-weight:600">${stepsPct}%${stepsPct>=100?' 🎯 Цель выполнена!':''}</div>
+        </div>
+      </div>
+    </div>`;
+  }catch(e){}
+
   let nutHtml='';
   try{
     const nut=await get('/api/nutrition/today');
@@ -601,7 +653,7 @@ async function loadToday(){
     nutHtml=`<div class="card" style="margin-top:12px"><div class="card-title">Питание сегодня</div><div style="display:flex;gap:20px;align-items:center"><div><div style="font-family:var(--font-d);font-size:36px;font-weight:900;color:var(--yellow)">${Math.round(cal)}</div><div style="font-size:12px;color:var(--muted)">ккал / ${nut.goals?.calories||2300}</div></div><div style="flex:1"><div style="font-size:12px;color:var(--muted);margin-bottom:5px">Белок: ${Math.round(prot)}г / ${tProt}г (${pct}%)</div><div style="background:rgba(255,255,255,0.05);border-radius:4px;height:8px;overflow:hidden"><div style="width:${pct}%;height:100%;background:linear-gradient(90deg,var(--blue),var(--aqua));border-radius:4px"></div></div><div style="font-size:11px;color:var(--muted);margin-top:5px">${nut.meals?.length||0} приёмов пищи</div></div></div></div>`;
   }catch(e){nutHtml=`<div class="card" style="margin-top:12px"><div style="color:var(--muted);font-size:13px">Ошибка загрузки данных</div></div>`;}
   const userBadge=CURRENT_USER&&CURRENT_USER.email?`<div class="user-badge"><div class="user-avatar">${(CURRENT_USER.name||'?')[0].toUpperCase()}</div><div><div class="user-name">${CURRENT_USER.name}</div><div class="user-email">${CURRENT_USER.email}</div></div><button class="logout-btn" onclick="doLogout()">Выйти</button></div>`:'';
-  document.getElementById('today-content').innerHTML=`${userBadge}${weekHtml}<div style="font-family:var(--font-d);font-size:40px;font-weight:900;letter-spacing:-1px;margin-bottom:6px">${dayNames[DAY]}</div><div class="day-type ${plan.type}">${plan.icon} ${plan.label}</div>${workoutHtml}${nutHtml}`;
+  document.getElementById('today-content').innerHTML=`${userBadge}${weekHtml}<div style="font-family:var(--font-d);font-size:40px;font-weight:900;letter-spacing:-1px;margin-bottom:6px">${dayNames[DAY]}</div><div class="day-type ${plan.type}">${plan.icon} ${plan.label}</div>${workoutHtml}${stepsHtml}${nutHtml}`;
 }
 
 function toggleDone(idx){
@@ -846,12 +898,13 @@ async function garminSync(){
 
 // ===== TABS =====
 function setTab(name){
-  ['run','swim','ai','garmin','profile'].forEach(t=>document.getElementById('tab-'+t).style.display=t===name?'block':'none');
-  document.querySelectorAll('.toggle-btn').forEach((b,i)=>b.classList.toggle('active',['run','swim','ai','garmin','profile'][i]===name));
+  ['run','steps','swim','ai','garmin','profile'].forEach(t=>document.getElementById('tab-'+t).style.display=t===name?'block':'none');
+  document.querySelectorAll('.toggle-btn').forEach((b,i)=>b.classList.toggle('active',['run','steps','swim','ai','garmin','profile'][i]===name));
   if(name==='swim')loadSwimStats();
   if(name==='run'){loadRunStats();renderRunPlan();loadHistory();}
   if(name==='profile')renderProfile();
   if(name==='garmin')loadGarminStatus();
+  if(name==='steps')loadSteps();
 }
 
 async function loadRunStats(){
@@ -922,6 +975,85 @@ async function loadHistory(){
     });
     el.innerHTML=html;
   }catch(e){el.innerHTML='<div style="color:var(--muted);font-size:13px">Ошибка загрузки</div>';}
+}
+
+async function loadSteps(){
+  const period=document.getElementById('steps-period')?.value||'week';
+  const el=document.getElementById('steps-content');
+  if(!el)return;
+  el.innerHTML='<div class="loading"><div class="spinner"></div></div>';
+  try{
+    const data=await get('/api/health/steps?period='+period);
+    const s=data.summary||{};
+    const goal=data.steps_goal||10000;
+    const todaySteps=data.days[0]?.steps||0;
+    const todayPct=Math.min(100,Math.round(todaySteps/goal*100));
+    const todayCal=data.days[0]?.calories||0;
+
+    let html=`
+    <div style="margin-bottom:16px">
+      <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px">
+        <div style="font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--muted)">Сегодня</div>
+        <div style="font-size:11px;color:var(--muted)">цель: ${goal.toLocaleString()}</div>
+      </div>
+      <div style="font-family:var(--font-d);font-size:48px;font-weight:900;color:var(--green);line-height:1">${todaySteps.toLocaleString()}</div>
+      <div style="font-size:13px;color:var(--muted);margin-top:4px">≈ ${todayCal} ккал от шагов</div>
+      <div style="margin-top:10px;background:rgba(255,255,255,0.05);border-radius:6px;height:8px;overflow:hidden">
+        <div style="width:${todayPct}%;height:100%;background:linear-gradient(90deg,var(--green),var(--aqua));border-radius:6px;transition:width .8s"></div>
+      </div>
+      <div style="font-size:11px;color:${todayPct>=100?'var(--green)':'var(--muted)'};margin-top:4px">${todayPct}% от цели</div>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:16px">
+      <div style="background:var(--bg3);border-radius:10px;padding:10px;text-align:center">
+        <div style="font-family:var(--font-d);font-size:20px;font-weight:900;color:var(--green)">${Math.round(s.avg_steps||0).toLocaleString()}</div>
+        <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px">Среднее</div>
+      </div>
+      <div style="background:var(--bg3);border-radius:10px;padding:10px;text-align:center">
+        <div style="font-family:var(--font-d);font-size:20px;font-weight:900;color:var(--yellow)">${Math.round(s.max_steps||0).toLocaleString()}</div>
+        <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px">Рекорд</div>
+      </div>
+      <div style="background:var(--bg3);border-radius:10px;padding:10px;text-align:center">
+        <div style="font-family:var(--font-d);font-size:20px;font-weight:900;color:var(--aqua)">${s.avg_calories||0}</div>
+        <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px">Ср. ккал</div>
+      </div>
+    </div>`;
+
+    if(data.days&&data.days.length>0){
+      data.days.forEach(d=>{
+        const pct=Math.min(100,Math.round((d.steps||0)/goal*100));
+        const dateStr=new Date(d.date).toLocaleDateString('ru',{weekday:'short',day:'numeric',month:'short'});
+        const barColor=pct>=100?'var(--green)':pct>=70?'var(--yellow)':'var(--red)';
+        html+=`<div style="padding:8px 0;border-bottom:1px solid var(--border)">
+          <div style="display:flex;justify-content:space-between;margin-bottom:5px">
+            <div style="font-size:12px;color:var(--muted)">${dateStr}</div>
+            <div style="display:flex;align-items:center;gap:8px">
+              <div style="font-family:var(--font-d);font-size:16px;font-weight:800;color:${barColor}">${(d.steps||0).toLocaleString()}</div>
+              <div style="font-size:11px;color:var(--muted)">≈${d.calories||0} ккал</div>
+            </div>
+          </div>
+          <div style="background:rgba(255,255,255,0.05);border-radius:3px;height:4px;overflow:hidden">
+            <div style="width:${pct}%;height:100%;background:${barColor};border-radius:3px"></div>
+          </div>
+        </div>`;
+      });
+    } else {
+      html+='<div style="color:var(--muted);font-size:13px;padding:12px 0;text-align:center">Нет данных. Синхронизируй Garmin!</div>';
+    }
+    el.innerHTML=html;
+  }catch(e){el.innerHTML='<div style="color:var(--muted);font-size:13px">Нет данных</div>';}
+}
+
+async function logSteps(){
+  const steps=parseInt(document.getElementById('steps-count').value);
+  const d=document.getElementById('steps-date').value||new Date().toISOString().slice(0,10);
+  if(!steps){toast('Введи количество шагов!',true);return;}
+  try{
+    await post('/api/health/',{date:d,steps});
+    document.getElementById('steps-count').value='';
+    loadSteps();
+    loadToday();
+    toast(`👟 ${steps.toLocaleString()} шагов записано!`);
+  }catch(e){toast('Ошибка',true);}
 }
 
 async function loadAI(){
@@ -1099,6 +1231,10 @@ function generatePlan(){
 }
 
 // ===== INIT =====
+document.addEventListener('DOMContentLoaded',()=>{
+  const stepsDateEl=document.getElementById('steps-date');
+  if(stepsDateEl)stepsDateEl.value=new Date().toISOString().slice(0,10);
+});
 init();
 </script>
 </body>
