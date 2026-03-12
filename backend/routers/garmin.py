@@ -92,11 +92,16 @@ def sync_health_metrics(uid: int, client, days: int, db):
                 pass
 
             # --- Sleep: from get_sleep_data ---
+            # sleepTimeSeconds = total sleep (correct)
+            # sleepingSeconds  = only deep/light sleep (wrong, ~4.7h)
             sleep_h = None
             try:
                 sleep_data = client.get_sleep_data(date_str)
                 dto = sleep_data.get("dailySleepDTO", {}) if sleep_data else {}
-                secs = dto.get("sleepTimeSeconds") or dto.get("sleepingSeconds")
+                secs = dto.get("sleepTimeSeconds")  # total sleep time — correct field
+                if not secs:
+                    # fallback: sum from summary sleepingSeconds only if no other option
+                    secs = dto.get("sleepingSeconds")
                 if secs and secs > 0:
                     sleep_h = round(secs / 3600, 1)
             except Exception:
