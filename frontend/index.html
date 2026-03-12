@@ -627,14 +627,17 @@ async function garminConnect(){
 async function garminSync(){
   const email=document.getElementById('g-email').value;
   const pass=document.getElementById('g-pass').value;
-  if(!pass){toast('Введи пароль!',true);return;}
+  if(!email||!pass){toast('Введи email и пароль!',true);return;}
+  if(!TOKEN){toast('Сначала войди в аккаунт!',true);return;}
   const btn=document.getElementById('g-sync-btn');
   btn.disabled=true;btn.textContent='Синхронизируем...';
+  document.getElementById('g-result').innerHTML='<div style="color:var(--muted)">Загружаем тренировки из Garmin...</div>';
   try{
     const r=await post('/api/garmin/sync?days=14',{email,password:pass});
     toast(`✅ ${r.synced} тренировок синхронизировано`);
     document.getElementById('g-result').textContent=`✅ ${r.synced} новых · пропущено: ${r.skipped}`;
     loadSwimStats();
+    switchScreen('stats');setTab('swim');
   }catch(e){toast('Ошибка синхронизации',true);document.getElementById('g-result').textContent='❌ '+e.message;}
   finally{btn.disabled=false;btn.textContent='🔄 Синхронизировать';}
 }
