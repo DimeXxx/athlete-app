@@ -107,6 +107,8 @@ body{background:var(--bg);color:var(--text);font-family:var(--font-b);min-height
 /* PLAN EDITOR */
 .plan-day-row{display:flex;align-items:center;gap:8px;padding:10px 0;border-bottom:1px solid var(--border)}
 .plan-day-label{font-family:var(--font-d);font-size:16px;font-weight:800;width:36px;flex-shrink:0;color:var(--muted)}
+.goal-option{padding:14px 16px;background:var(--bg3);border:1px solid var(--border);border-radius:12px;cursor:pointer;font-size:15px;transition:all .2s}
+.goal-option:hover,.goal-option.selected{border-color:var(--aqua);background:rgba(0,229,204,0.1);color:var(--aqua)}
 .plan-day-input{flex:1;background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:8px 12px;color:var(--text);font-family:var(--font-b);font-size:13px;outline:none;-webkit-appearance:none;appearance:none}
 .plan-day-input:focus{border-color:var(--aqua)}
 </style>
@@ -311,6 +313,63 @@ body{background:var(--bg);color:var(--text);font-family:var(--font-b);min-height
     </div>
     <button class="btn-primary" onclick="addMeal()">ДОБАВИТЬ</button>
     <button onclick="closeModal('food-modal')" class="btn-secondary">Отмена</button>
+  </div>
+</div>
+
+<!-- SETUP WIZARD MODAL -->
+<div class="modal-overlay" id="setup-modal">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div id="setup-step-1">
+      <div class="modal-title">🎯 Твоя цель</div>
+      <p style="color:var(--muted);font-size:14px;margin-bottom:20px">Выбери главную цель — план сгенерируется автоматически</p>
+      <div id="goal-options" style="display:flex;flex-direction:column;gap:10px">
+        <div class="goal-option" onclick="selectGoal('5k')"     data-val="5k">     🏃 Пробежать 5 км</div>
+        <div class="goal-option" onclick="selectGoal('10k')"    data-val="10k">    🏃 Пробежать 10 км</div>
+        <div class="goal-option" onclick="selectGoal('half')"   data-val="half">   🏃 Полумарафон 21 км</div>
+        <div class="goal-option" onclick="selectGoal('marathon')" data-val="marathon">🏃 Марафон 42 км</div>
+        <div class="goal-option" onclick="selectGoal('swim')"   data-val="swim">   🏊 Улучшить плавание</div>
+        <div class="goal-option" onclick="selectGoal('lose')"   data-val="lose">   ⚖️ Похудеть</div>
+        <div class="goal-option" onclick="selectGoal('fit')"    data-val="fit">    💪 Общая форма</div>
+      </div>
+    </div>
+    <div id="setup-step-2" style="display:none">
+      <div class="modal-title">📅 Дата гонки</div>
+      <div class="input-group"><label class="input-label">Название события</label><input class="input-field" id="sw-race-name" placeholder="Кишинёвский полумарафон"></div>
+      <div class="input-group"><label class="input-label">Дата события</label><input class="input-field" id="sw-race-date" type="date"></div>
+      <button class="btn-primary" onclick="setupStep3()">ДАЛЕЕ →</button>
+      <button onclick="setupBack(1)" class="btn-secondary">← Назад</button>
+    </div>
+    <div id="setup-step-3" style="display:none">
+      <div class="modal-title">💪 Твой уровень</div>
+      <p style="color:var(--muted);font-size:14px;margin-bottom:20px">Это поможет подобрать правильный темп</p>
+      <div id="level-options" style="display:flex;flex-direction:column;gap:10px">
+        <div class="goal-option" onclick="selectLevel('beginner')">🟢 Начинающий — бегаю меньше года</div>
+        <div class="goal-option" onclick="selectLevel('intermediate')">🟡 Средний — бегаю 1-2 года</div>
+        <div class="goal-option" onclick="selectLevel('advanced')">🔴 Опытный — бегаю 2+ лет</div>
+      </div>
+      <button onclick="setupBack(2)" class="btn-secondary" style="margin-top:12px">← Назад</button>
+    </div>
+    <div id="setup-step-4" style="display:none">
+      <div class="modal-title">🏊 Дни тренировок</div>
+      <p style="color:var(--muted);font-size:14px;margin-bottom:16px">Выбери какие виды спорта ты делаешь</p>
+      <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:16px">
+        <label style="display:flex;align-items:center;gap:10px;cursor:pointer"><input type="checkbox" id="has-swim" checked style="width:18px;height:18px;accent-color:var(--blue)"> <span>🏊 Плавание</span></label>
+        <label style="display:flex;align-items:center;gap:10px;cursor:pointer"><input type="checkbox" id="has-gym" checked style="width:18px;height:18px;accent-color:var(--aqua)"> <span>💪 Тренажёрка</span></label>
+        <label style="display:flex;align-items:center;gap:10px;cursor:pointer"><input type="checkbox" id="has-run" checked style="width:18px;height:18px;accent-color:var(--orange)"> <span>🏃 Бег</span></label>
+      </div>
+      <div class="input-group">
+        <label class="input-label">Дней в неделю</label>
+        <select class="input-field" id="days-per-week">
+          <option value="3">3 дня</option>
+          <option value="4">4 дня</option>
+          <option value="5" selected>5 дней</option>
+          <option value="6">6 дней</option>
+        </select>
+      </div>
+      <button class="btn-primary" onclick="generatePlan()">🤖 СГЕНЕРИРОВАТЬ ПЛАН</button>
+      <button onclick="setupBack(3)" class="btn-secondary">← Назад</button>
+    </div>
   </div>
 </div>
 
@@ -768,8 +827,16 @@ async function loadAI(){
 
 function renderProfile(){
   const u=CURRENT_USER||{};
+  const goalNames={'5k':'Забег 5 км','10k':'Забег 10 км','half':'Полумарафон 21 км','marathon':'Марафон 42 км','swim':'Улучшить плавание','lose':'Похудеть','fit':'Общая форма'};
+  const daysLeft=Math.ceil((new Date(RACE_DATE)-new Date())/86400000);
   document.getElementById('profile-card').innerHTML=u.email?
-    `<div class="user-badge" style="margin-bottom:0"><div class="user-avatar">${(u.name||'?')[0].toUpperCase()}</div><div><div class="user-name">${u.name}</div><div class="user-email">${u.email}</div></div><button class="logout-btn" onclick="doLogout()">Выйти</button></div>`:
+    `<div class="user-badge" style="margin-bottom:16px"><div class="user-avatar">${(u.name||'?')[0].toUpperCase()}</div><div><div class="user-name">${u.name}</div><div class="user-email">${u.email}</div></div><button class="logout-btn" onclick="doLogout()">Выйти</button></div>
+    <div style="background:var(--bg3);border-radius:12px;padding:14px;margin-bottom:12px;border:1px solid var(--border)">
+      <div style="font-size:11px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:8px">Текущая цель</div>
+      <div style="font-family:var(--font-d);font-size:18px;font-weight:900">${RACE_NAME}</div>
+      <div style="font-size:12px;color:var(--orange);margin-top:4px">${daysLeft>0?daysLeft+' дней осталось':'Гонка состоялась!'}</div>
+    </div>
+    <button class="btn-primary" onclick="openSetupWizard()" style="margin-bottom:0">🎯 СМЕНИТЬ ЦЕЛЬ И ПЛАН</button>`:
     `<div style="text-align:center;padding:16px"><div style="color:var(--muted);margin-bottom:12px">Вы не вошли в аккаунт</div><button class="btn-primary" onclick="showAuth()" style="width:auto;padding:10px 24px">Войти</button></div>`;
 }
 
@@ -786,6 +853,131 @@ function toast(msg,isErr=false){
   const t=document.getElementById('toast');
   t.textContent=msg;t.className='toast'+(isErr?' error':'');
   t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2800);
+}
+
+// ===== SETUP WIZARD =====
+let setupGoal='half', setupLevel='intermediate';
+
+function openSetupWizard(){
+  ['setup-step-1','setup-step-2','setup-step-3','setup-step-4'].forEach((id,i)=>{
+    document.getElementById(id).style.display=i===0?'block':'none';
+  });
+  openModal('setup-modal');
+}
+
+function selectGoal(val){
+  setupGoal=val;
+  document.querySelectorAll('#goal-options .goal-option').forEach(el=>{
+    el.classList.toggle('selected',el.dataset.val===val);
+  });
+  // Skip date step for non-race goals
+  const needsDate=['5k','10k','half','marathon'].includes(val);
+  setTimeout(()=>{
+    document.getElementById('setup-step-1').style.display='none';
+    if(needsDate){
+      document.getElementById('setup-step-2').style.display='block';
+      // Default date based on goal
+      const d=new Date();
+      if(val==='5k')d.setMonth(d.getMonth()+6);
+      else if(val==='10k')d.setMonth(d.getMonth()+8);
+      else if(val==='half')d.setMonth(d.getMonth()+10);
+      else d.setFullYear(d.getFullYear()+1);
+      document.getElementById('sw-race-date').value=d.toISOString().slice(0,10);
+      const names={'5k':'Забег 5 км','10k':'Забег 10 км','half':'Полумарафон 21 км','marathon':'Марафон 42 км'};
+      document.getElementById('sw-race-name').value=names[val]||'Моя гонка';
+    } else {
+      document.getElementById('setup-step-3').style.display='block';
+    }
+  },200);
+}
+
+function setupStep3(){
+  document.getElementById('setup-step-2').style.display='none';
+  document.getElementById('setup-step-3').style.display='block';
+}
+
+function setupBack(step){
+  document.getElementById('setup-step-'+(step+1)).style.display='none';
+  document.getElementById('setup-step-'+step).style.display='block';
+}
+
+function selectLevel(val){
+  setupLevel=val;
+  document.querySelectorAll('#level-options .goal-option').forEach(el=>{
+    el.classList.toggle('selected',el.textContent.includes(val==='beginner'?'Начин':val==='intermediate'?'Средн':'Опытн'));
+  });
+  setTimeout(()=>{
+    document.getElementById('setup-step-3').style.display='none';
+    document.getElementById('setup-step-4').style.display='block';
+  },200);
+}
+
+function generatePlan(){
+  const hasSwim=document.getElementById('has-swim').checked;
+  const hasGym=document.getElementById('has-gym').checked;
+  const hasRun=document.getElementById('has-run').checked;
+  const daysPerWeek=parseInt(document.getElementById('days-per-week').value)||5;
+  const raceName=document.getElementById('sw-race-name')?.value||'Моя гонка';
+  const raceDate=document.getElementById('sw-race-date')?.value||new Date(Date.now()+180*86400000).toISOString().slice(0,10);
+
+  // Pace by level
+  const paces={
+    beginner:   {tempo:'6:00–6:30',long:'6:30–7:00',race5k:'7:00',race10k:'7:00',raceHalf:'7:00'},
+    intermediate:{tempo:'5:10–5:30',long:'5:50–6:10',race5k:'5:30',race10k:'5:40',raceHalf:'5:50'},
+    advanced:   {tempo:'4:30–4:50',long:'5:10–5:20',race5k:'4:30',race10k:'4:40',raceHalf:'5:00'},
+  };
+  const pace=paces[setupLevel];
+
+  // Build 7-day plan based on goal and activities
+  const REST={type:'Rest',garminType:'',icon:'😴',label:'Отдых',color:'var(--muted)',detail:'День отдыха'};
+  const SWIM={type:'Swimming',garminType:'Swimming',icon:'🏊',label:'Плавание',color:'var(--blue)',detail:'1500–2000 м'};
+  const GYM_A={type:'Gym',garminType:'FunctionalStrengthTraining',icon:'💪',label:'Тренажёрка A',color:'var(--aqua)',detail:'40 мин · Прог. A'};
+  const GYM_B={type:'GymB',garminType:'FunctionalStrengthTraining',icon:'💪',label:'Тренажёрка B',color:'var(--aqua)',detail:'40 мин · Прог. B'};
+  const RUN_T={type:'Running',garminType:'Running',icon:'🏃',label:'Бег темповый',color:'var(--orange)',detail:`8–12 км · ${pace.tempo} мин/км`};
+  const RUN_L={type:'RunLong',garminType:'Running',icon:'🏃',label:'Длинный бег',color:'var(--yellow)',detail:`14–18 км · ${pace.long} мин/км`};
+  const RUN_E={type:'Running',garminType:'Running',icon:'🏃',label:'Лёгкий бег',color:'var(--orange)',detail:`5–8 км · лёгко`};
+
+  let plan;
+
+  if(['half','marathon','10k','5k'].includes(setupGoal)){
+    if(hasSwim&&hasGym){
+      // Full triathlete plan: ВС-ПН-ВТ-СР-ЧТ-ПТ-СБ
+      plan=[RUN_L, SWIM, GYM_A, SWIM, GYM_B, SWIM, RUN_T];
+    } else if(hasSwim&&!hasGym){
+      plan=[RUN_L, SWIM, RUN_E, SWIM, REST, SWIM, RUN_T];
+    } else if(hasGym&&!hasSwim){
+      plan=[RUN_L, GYM_A, RUN_T, GYM_B, RUN_E, REST, RUN_T];
+    } else {
+      plan=[RUN_L, RUN_E, REST, RUN_T, RUN_E, REST, RUN_T];
+    }
+  } else if(setupGoal==='swim'){
+    plan=[SWIM, REST, SWIM, GYM_A, SWIM, REST, SWIM];
+  } else {
+    // lose / fit
+    plan=[RUN_L, SWIM, GYM_A, SWIM, GYM_B, RUN_T, REST];
+  }
+
+  // Apply days per week — replace extra days with REST
+  if(daysPerWeek<6){
+    let activeDays=plan.filter(p=>p.type!=='Rest').length;
+    for(let i=plan.length-1;i>=0&&activeDays>daysPerWeek;i--){
+      if(plan[i].type!=='Rest'&&plan[i].type!=='RunLong'){
+        plan[i]=REST;activeDays--;
+      }
+    }
+  }
+
+  USER_PLAN=plan.map((p,i)=>({...p,day:['ВС','ПН','ВТ','СР','ЧТ','ПТ','СБ'][i]}));
+  RACE_DATE=raceDate;
+  RACE_NAME=raceName+' — '+new Date(raceDate).toLocaleDateString('ru',{day:'numeric',month:'long'});
+  localStorage.setItem('user_plan',JSON.stringify(USER_PLAN));
+  localStorage.setItem('race_date',RACE_DATE);
+  localStorage.setItem('race_name',RACE_NAME);
+
+  closeModal('setup-modal');
+  renderPlan();
+  loadToday();
+  toast('План сгенерирован! 🎯');
 }
 
 // ===== INIT =====
