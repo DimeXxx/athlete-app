@@ -140,3 +140,40 @@ def update_profile(req: dict, user=Depends(get_optional_user), db=Depends(get_db
             """, (uid, key, str(req[key])))
     db.commit()
     return {"message": "Профиль обновлён"}
+
+
+@router.get("/admin/stats")
+def admin_stats(secret: str = "", db=Depends(get_db)):
+    """Admin stats — access with ?secret=YOUR_SECRET"""
+    import os
+    admin_secret = os.environ.get("ADMIN_SECRET", "smartfit2026")
+    if secret != admin_secret:
+        raise HTTPException(403, "Forbidden")
+
+    users = db.execute("""
+        SELECT id, name, email, created_at,
+          (SELECT COUNT(*) FROM workouts WHERE user_id=users.id) as workout_count,
+          (SELECT COUNT(*) FROM nutrition WHERE user_id=users.id) as meal_count,
+          (SELECT MAX(date) FROM workouts WHERE user_id=users.id) as last_workout,
+          (SELECT email FROM garmin_accounts WHERE user_id=users.id) as garmin_email,
+          (SELECT value FROM goals WHERE user_id=users.id AND key='race_name') as race_name
+        FROM users ORDER BY id DESC
+    """).fetchall()
+
+    total = len(users)
+    with_garmin = sum(1 for u in users if u["garmin_email"])
+    with_workouts = sum(1 for u in users if u["workout_count"] > 0)
+    active_7d = db.execute("""
+        SELECT COUNT(DISTINCT user_id) as cnt FROM workouts
+        WHERE date >= date('now', '-7 days')
+    """).fetchone()["cnt"]
+
+    return {
+        "summary": {
+            "total_users": total,
+            "with_garmin": with_garmin,
+            "with_workouts": with_workouts,
+            "active_last_7d": active_7d,
+        },
+        "users": [dict(u) for u in users]
+    }
