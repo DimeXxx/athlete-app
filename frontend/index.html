@@ -777,12 +777,12 @@ function showAuth(){
 
 function showApp(){
   applyTranslations();
-  // Load race goal from DB (cross-device sync)
-  loadRaceFromDB().then(() => { renderPlan(); });
   document.getElementById('auth-screen').style.display='none';
   document.getElementById('app').style.display='block';
   loadToday();
   renderPlan();
+  // Load race goal from DB async (cross-device sync)
+  loadRaceFromDB().then(()=>renderPlan()).catch(()=>{});
 }
 
 function authTab(tab){
