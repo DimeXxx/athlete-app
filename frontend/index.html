@@ -525,6 +525,7 @@ function toggleTheme(){
     <button class="toggle-btn active" onclick="setTab('run')">🏃 Бег</button>
     <button class="toggle-btn" onclick="setTab('swim')">🏊 Плавание</button>
     <button class="toggle-btn" onclick="setTab('steps')">👟 Шаги</button>
+    <button class="toggle-btn" onclick="setTab('performance')">📈 Форма</button>
     <button class="toggle-btn" onclick="setTab('ai')">🤖 AI</button>
     <button class="toggle-btn" onclick="setTab('garmin')">Garmin</button>
     <button class="toggle-btn" onclick="setTab('strava')">🟠 Strava</button>
@@ -712,6 +713,10 @@ function toggleTheme(){
   <div class="card" id="strava-status-card">
     <div style="text-align:center;color:var(--muted2);padding:20px">Загрузка Strava...</div>
   </div>
+</div>
+
+<div id="tab-performance" style="display:none">
+  <div id="performance-content"><div class="loading"><div class="spinner"></div>Загрузка...</div></div>
 </div>
 
 <!-- TRAINING HUB SCREEN -->
@@ -1753,7 +1758,7 @@ async function garminSync(){
 
 // ===== TABS =====
 function setTab(name){
-  ['run','swim','steps','ai','garmin','strava'].forEach(t=>{const el=document.getElementById('tab-'+t);if(el)el.style.display=t===name?'block':'none';});
+  ['run','swim','steps','ai','garmin','strava','performance'].forEach(t=>{const el=document.getElementById('tab-'+t);if(el)el.style.display=t===name?'block':'none';});
   document.querySelectorAll('.toggle-btn').forEach(b=>{b.classList.toggle('active',b.getAttribute('onclick')?.includes("'"+name+"'"));});
   if(name==='swim')loadSwimStats();
   if(name==='run'){loadRunStats();loadHistory();}
@@ -1761,6 +1766,7 @@ function setTab(name){
   if(name==='recovery')loadRecoveryScreen();
   if(name==='strava')loadStravaStatus();
   if(name==='steps')loadSteps();
+  if(name==='performance')loadPerformanceScreen();
 }
 
 async function loadRunStats(){
@@ -2744,6 +2750,281 @@ function setDashPeriod(p){
     document.getElementById('dp-'+k)?.classList.toggle('active', k===p);
   });
   loadDashboard();
+}
+
+async function loadPerformanceScreen(){
+  const el = document.getElementById('performance-content');
+  if(!el) return;
+  el.innerHTML='<div class="loading"><div class="spinner"></div>Загрузка...</div>';
+
+  let p={};
+  try{ p=await get('/api/health/performance'); }catch(e){}
+
+  const score       = p.score||0;
+  const status      = p.status||'Нет данных';
+  const trendDelta  = p.trend_delta||0;
+  const summary     = p.summary||[];
+  const perfTrend   = p.perf_trend||[];
+  const bd          = p.score_breakdown||{};
+  const vo2now      = p.vo2max;
+  const vo2trend    = p.vo2max_trend||0;
+  const z2pace      = p.z2_pace;
+  const z2hr        = p.z2_hr;
+  const aeroImp     = p.aerobic_improvement_sec;
+  const effChg      = p.run_eff_change;
+  const avgPerWeek  = p.avg_per_week||0;
+  const consecWeeks = p.consec_weeks||0;
+  const missedDays  = p.missed_days_14||0;
+  const weeksData   = p.weeks_data||[];
+  const load7       = p.load7||0;
+  const avgWeekLoad = p.avg_week_load||0;
+  const loadBalance = p.load_balance||'нормальная';
+  const loadBalPct  = p.load_balance_pct||0;
+  const avgProt     = p.avg_prot_30||0;
+  const protGoal    = p.prot_goal||150;
+  const protGap     = p.prot_gap_30||0;
+  const hrvAvg      = p.hrv_avg_30||0;
+  const sleepAvg    = p.sleep_avg_30||0;
+
+  const scoreColor  = score>=70?'var(--green)':score>=50?'var(--yellow)':'var(--orange)';
+  const statusColor = status==='Форма растёт'?'var(--green)':status==='Накоплена усталость'?'var(--red)':'var(--yellow)';
+
+  function fmtPt(v){ return (v>0?'+':'')+v; }
+
+  let html = '';
+
+  // ── 1. PERFORMANCE SCORE ──────────────────────────────
+  let summaryHtml='';
+  summary.forEach(function(s){
+    const isBad = s.indexOf('мало')>=0||s.indexOf('снизился')>=0||s.indexOf('ниже')>=0||s.indexOf('нужно')>=0;
+    summaryHtml+='<div style="font-size:11px;color:'+(isBad?'var(--red)':'rgba(255,255,255,0.55)')+';line-height:1.9">'+(isBad?'↓ ':'✓ ')+s+'</div>';
+  });
+
+  // Score breakdown badges
+  const bdItems=[
+    {k:'vo2max',    label:'VO₂max',      icon:'📈'},
+    {k:'efficiency',label:'Эффективность',icon:'⚡'},
+    {k:'consistency',label:'Стабильность',icon:'📅'},
+    {k:'recovery',  label:'Восстановление',icon:'💜'},
+    {k:'nutrition', label:'Питание',      icon:'🥩'},
+  ];
+  let bdHtml='';
+  bdItems.forEach(function(item){
+    const v=bd[item.k];
+    if(v===undefined) return;
+    const c=v>=0?'var(--green)':'var(--red)';
+    bdHtml+='<span style="font-size:9px;padding:2px 6px;border-radius:5px;background:rgba(255,255,255,0.07);color:'+c+'">'+item.icon+' '+fmtPt(v)+'</span>';
+  });
+
+  html += '<div style="display:flex;gap:14px;align-items:flex-start;margin-bottom:12px">'
+    // Ring
+    +'<div style="flex-shrink:0;display:flex;flex-direction:column;align-items:center">'
+    +'<svg width="110" height="110" viewBox="0 0 110 110">'
+    +'<circle cx="55" cy="55" r="46" fill="none" stroke="rgba(255,255,255,0.06)" stroke-width="10"/>'
+    +'<circle cx="55" cy="55" r="46" fill="none" stroke="'+scoreColor+'" stroke-width="10"'
+    +' stroke-dasharray="289" stroke-dashoffset="'+(289-289*score/100)+'"'
+    +' stroke-linecap="round" transform="rotate(-90 55 55)" style="transition:stroke-dashoffset 1.2s ease"/>'
+    +'<text x="55" y="49" text-anchor="middle" fill="white" font-size="26" font-weight="800">'+score+'</text>'
+    +'<text x="55" y="63" text-anchor="middle" fill="rgba(255,255,255,0.4)" font-size="8">Performance</text>'
+    +'</svg>'
+    +'<div style="display:flex;gap:4px;flex-wrap:wrap;justify-content:center;margin-top:6px;max-width:110px">'+bdHtml+'</div>'
+    +'</div>'
+    // Right: status + summary
+    +'<div style="flex:1;padding-top:6px">'
+    +'<div style="font-size:14px;font-weight:800;color:'+statusColor+';margin-bottom:8px">'+status+'</div>'
+    +summaryHtml
+    +'</div></div>';
+
+  // ── 2. PERFORMANCE TREND (30 days, weekly) ────────────
+  if(perfTrend.length>0){
+    const maxT=Math.max.apply(null,perfTrend.map(function(t){return t.score;}).concat([1]));
+    const minT=Math.min.apply(null,perfTrend.map(function(t){return t.score;}));
+    let trendBars='';
+    perfTrend.forEach(function(t,i){
+      const h=Math.round(((t.score-minT+5)/(maxT-minT+10))*50)+10;
+      const c=t.score>=70?'var(--green)':t.score>=50?'var(--yellow)':'var(--orange)';
+      const isLast=(i===perfTrend.length-1);
+      trendBars+='<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:3px">'
+        +'<div style="font-size:9px;color:'+(isLast?'white':'var(--muted2)')+'">'+t.score+'</div>'
+        +'<div style="width:100%;height:'+h+'px;background:'+c+';border-radius:4px 4px 2px 2px;opacity:'+(isLast?'1':'0.65')+'"></div>'
+        +'<div style="font-size:8px;color:var(--muted2)">'+t.week+'</div>'
+        +'</div>';
+    });
+    const delta30Color = trendDelta>=3?'var(--green)':trendDelta<=-3?'var(--red)':'var(--yellow)';
+    html += '<div class="card" style="margin-bottom:10px">'
+      +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">'
+      +'<div style="font-size:13px;font-weight:700">📊 Performance Trend</div>'
+      +'<div style="font-size:12px;font-weight:700;color:'+delta30Color+'">'+(trendDelta>=0?'+':'')+trendDelta+' за 30 дней</div>'
+      +'</div>'
+      +'<div style="display:flex;align-items:flex-end;gap:6px;height:75px">'+trendBars+'</div>'
+      +'</div>';
+  }
+
+  // ── 3. VO2MAX ─────────────────────────────────────────
+  const vo2Color = vo2trend>0?'var(--green)':vo2trend<-0.5?'var(--red)':'var(--yellow)';
+  const vo2Status = vo2trend>1?'растёт 📈':vo2trend>0?'небольшой рост':vo2trend<-0.5?'снижается ⚠️':'без изменений';
+  html += '<div class="card" style="margin-bottom:10px">'
+    +'<div style="display:flex;justify-content:space-between;align-items:center">'
+    +'<div><div style="font-size:13px;font-weight:700;margin-bottom:4px">🫁 VO₂max</div>'
+    +'<div style="font-size:32px;font-weight:800;color:var(--aqua);line-height:1">'+(vo2now||'—')+'</div>'
+    +'<div style="font-size:11px;color:var(--muted2);margin-top:4px">мл/кг/мин</div></div>'
+    +'<div style="text-align:right">'
+    +'<div style="font-size:18px;font-weight:800;color:'+vo2Color+'">'+(vo2trend>0?'+':'')+vo2trend+'</div>'
+    +'<div style="font-size:10px;color:var(--muted2)">за 30 дней</div>'
+    +'<div style="font-size:11px;color:'+vo2Color+';font-weight:600;margin-top:4px">'+vo2Status+'</div>'
+    +'</div></div></div>';
+
+  // ── 4. RUNNING EFFICIENCY ─────────────────────────────
+  const effColor = effChg!==null?(effChg>0?'var(--green)':effChg<-3?'var(--red)':'var(--yellow)'):'var(--muted2)';
+  html += '<div class="card" style="margin-bottom:10px">'
+    +'<div style="font-size:13px;font-weight:700;margin-bottom:10px">⚡ Running Efficiency</div>'
+    +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:8px">'
+    +'<div style="background:rgba(255,255,255,0.04);border-radius:10px;padding:10px;text-align:center">'
+    +'<div style="font-size:10px;color:var(--muted2);margin-bottom:4px">Z2 темп</div>'
+    +'<div style="font-size:22px;font-weight:800;color:var(--orange)">'+(z2pace||'—')+'</div>'
+    +'<div style="font-size:9px;color:var(--muted2)">мин/км</div>'
+    +'</div>'
+    +'<div style="background:rgba(255,255,255,0.04);border-radius:10px;padding:10px;text-align:center">'
+    +'<div style="font-size:10px;color:var(--muted2);margin-bottom:4px">ЧСС в Z2</div>'
+    +'<div style="font-size:22px;font-weight:800;color:var(--red)">'+(z2hr||'—')+'</div>'
+    +'<div style="font-size:9px;color:var(--muted2)">уд/мин</div>'
+    +'</div></div>'
+    +(aeroImp!==null&&aeroImp!==undefined
+      ?'<div style="background:rgba(255,255,255,0.04);border-radius:10px;padding:8px 10px;display:flex;justify-content:space-between;align-items:center">'
+        +'<div style="font-size:12px;color:var(--muted2)">Аэробный прогресс vs прошлый месяц</div>'
+        +'<div style="font-size:14px;font-weight:800;color:'+(aeroImp>0?'var(--green)':aeroImp<0?'var(--red)':'var(--muted2)')+';">'+(aeroImp>0?'+':'')+aeroImp+' сек/км</div>'
+        +'</div>'
+      :'<div style="font-size:11px;color:var(--muted2)">Нужно больше пробежек с датчиком пульса для анализа</div>')
+    +(effChg!==null&&effChg!==undefined
+      ?'<div style="font-size:12px;color:'+effColor+';font-weight:600;margin-top:8px">эффективность '+(effChg>0?'+':'')+effChg+'%</div>'
+      :'')
+    +'</div>';
+
+  // ── 5. AEROBIC PROGRESS ───────────────────────────────
+  if(aeroImp!==null && aeroImp!==undefined && Math.abs(aeroImp)>1){
+    const aeroBg = aeroImp>0?'rgba(61,219,103,0.05)':'rgba(239,68,68,0.05)';
+    const aeroColor = aeroImp>0?'var(--green)':'var(--red)';
+    html += '<div class="card" style="margin-bottom:10px;background:'+aeroBg+'">'
+      +'<div style="font-size:13px;font-weight:700;margin-bottom:6px">🏃 Aerobic Progress</div>'
+      +'<div style="font-size:28px;font-weight:800;color:'+aeroColor+'">'+(aeroImp>0?'+':'')+aeroImp+' сек/км</div>'
+      +'<div style="font-size:11px;color:var(--muted2);margin-top:4px">темп Z2 vs предыдущий месяц</div>'
+      +'<div style="font-size:12px;color:'+aeroColor+';font-weight:600;margin-top:6px">'
+      +(aeroImp>10?'Значительное улучшение аэробной базы 🎉'
+        :aeroImp>3?'Аэробная форма растёт — продолжай в Z2'
+        :aeroImp<-5?'Аэробная форма снижается — добавь длинные медленные пробежки'
+        :'Стабильный уровень аэробной формы')
+      +'</div></div>';
+  }
+
+  // ── 6. CONSISTENCY ────────────────────────────────────
+  let weeksBarHtml='';
+  weeksData.forEach(function(cnt,i){
+    const h=Math.max(4,Math.min(40,cnt*8));
+    const c=cnt>=4?'var(--green)':cnt>=2?'var(--yellow)':'rgba(255,255,255,0.2)';
+    weeksBarHtml+='<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px">'
+      +'<div style="font-size:10px;color:var(--muted2)">'+cnt+'</div>'
+      +'<div style="width:100%;height:'+h+'px;background:'+c+';border-radius:3px 3px 2px 2px"></div>'
+      +'<div style="font-size:9px;color:var(--muted2)">-'+(i===0?'нед':((i+1)*7)+'д')+'</div>'
+      +'</div>';
+  });
+  const consistColor = avgPerWeek>=4?'var(--green)':avgPerWeek>=2?'var(--yellow)':'var(--red)';
+  html += '<div class="card" style="margin-bottom:10px">'
+    +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">'
+    +'<div style="font-size:13px;font-weight:700">📅 Consistency</div>'
+    +'<div style="font-size:12px;color:'+consistColor+';font-weight:700">'+avgPerWeek+' тр/нед</div>'
+    +'</div>'
+    +(weeksBarHtml?'<div style="display:flex;align-items:flex-end;gap:6px;height:55px;margin-bottom:10px">'+weeksBarHtml+'</div>':'')
+    +'<div style="display:flex;gap:10px">'
+    +(consecWeeks>0?'<div style="flex:1;background:rgba(61,219,103,0.07);border-radius:10px;padding:8px;text-align:center"><div style="font-size:16px;font-weight:800;color:var(--green)">'+consecWeeks+'</div><div style="font-size:10px;color:var(--muted2)">нед. подряд ≥3 тр.</div></div>':'')
+    +(missedDays>0?'<div style="flex:1;background:rgba(239,68,68,0.07);border-radius:10px;padding:8px;text-align:center"><div style="font-size:16px;font-weight:800;color:var(--red)">'+missedDays+'</div><div style="font-size:10px;color:var(--muted2)">пропущено дней/14</div></div>':'<div style="flex:1;background:rgba(61,219,103,0.07);border-radius:10px;padding:8px;text-align:center"><div style="font-size:14px;font-weight:800;color:var(--green)">✓</div><div style="font-size:10px;color:var(--muted2)">все дни активны</div></div>')
+    +'</div></div>';
+
+  // ── 7. LOAD BALANCE ───────────────────────────────────
+  const loadBgColor = loadBalance==='оптимальная'?'rgba(61,219,103,0.05)':loadBalance==='слишком высокая'?'rgba(239,68,68,0.06)':'rgba(251,191,36,0.05)';
+  const loadBorderColor = loadBalance==='оптимальная'?'rgba(61,219,103,0.2)':loadBalance==='слишком высокая'?'rgba(239,68,68,0.2)':'rgba(251,191,36,0.2)';
+  const loadBadgeColor = loadBalance==='оптимальная'?'var(--green)':loadBalance==='слишком высокая'?'var(--red)':'var(--yellow)';
+  html += '<div class="card" style="margin-bottom:10px;background:'+loadBgColor+';border:1px solid '+loadBorderColor+'">'
+    +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">'
+    +'<div style="font-size:13px;font-weight:700">⚖️ Load Balance</div>'
+    +'<div style="font-size:11px;color:'+loadBadgeColor+';font-weight:700">'+loadBalance+'</div>'
+    +'</div>'
+    +'<div style="display:flex;justify-content:space-between;font-size:12px;color:var(--muted2);margin-bottom:8px">'
+    +'<span>Эта неделя: <strong style="color:white">'+load7+' мин</strong></span>'
+    +'<span>Среднее: <strong style="color:white">'+avgWeekLoad+' мин</strong></span>'
+    +'</div>'
+    +(avgWeekLoad>0?'<div style="background:rgba(255,255,255,0.07);border-radius:6px;height:6px;overflow:hidden">'
+      +'<div style="background:'+loadBadgeColor+';height:100%;width:'+Math.min(150,loadBalPct)+'%;border-radius:6px;transition:width 1s"></div>'
+      +'</div>':'')
+    +'</div>';
+
+  // ── 8. RECOVERY IMPACT ────────────────────────────────
+  const recScore = p.recovery_score||0;
+  html += '<div class="card" style="margin-bottom:10px">'
+    +'<div style="font-size:13px;font-weight:700;margin-bottom:8px">💜 Recovery Impact</div>'
+    +'<div style="display:flex;gap:8px">'
+    +'<div style="flex:1;background:rgba(255,255,255,0.04);border-radius:10px;padding:10px;text-align:center">'
+    +'<div style="font-size:10px;color:var(--muted2);margin-bottom:4px">HRV avg 30д</div>'
+    +'<div style="font-size:20px;font-weight:800;color:#a855f7">'+(hrvAvg||'—')+'</div>'
+    +'</div>'
+    +'<div style="flex:1;background:rgba(255,255,255,0.04);border-radius:10px;padding:10px;text-align:center">'
+    +'<div style="font-size:10px;color:var(--muted2);margin-bottom:4px">Сон avg 30д</div>'
+    +'<div style="font-size:20px;font-weight:800;color:var(--blue)">'+(sleepAvg||'—')+'ч</div>'
+    +'</div>'
+    +'<div style="flex:1;background:rgba(255,255,255,0.04);border-radius:10px;padding:10px;text-align:center">'
+    +'<div style="font-size:10px;color:var(--muted2);margin-bottom:4px">Влияние</div>'
+    +'<div style="font-size:13px;font-weight:700;color:'+(hrvAvg>=45?'var(--green)':hrvAvg>0?'var(--yellow)':'var(--muted2)')+';">'+(hrvAvg>=45?'позитивное':hrvAvg>0?'умеренное':'нет данных')+'</div>'
+    +'</div>'
+    +'</div></div>';
+
+  // ── 9. NUTRITION IMPACT ───────────────────────────────
+  const nutPct = protGoal>0?Math.round(avgProt/protGoal*100):0;
+  const nutColor = nutPct>=85?'var(--green)':nutPct>=60?'var(--yellow)':'var(--red)';
+  html += '<div class="card" style="margin-bottom:10px">'
+    +'<div style="font-size:13px;font-weight:700;margin-bottom:10px">🥩 Nutrition Impact</div>'
+    +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">'
+    +'<div style="font-size:11px;color:var(--muted2)">Средний белок за 30 дней</div>'
+    +'<div style="font-size:14px;font-weight:800;color:'+nutColor+'">'+(avgProt||'—')+'г / '+protGoal+'г</div>'
+    +'</div>'
+    +'<div style="background:rgba(255,255,255,0.07);border-radius:6px;height:7px;overflow:hidden;margin-bottom:8px">'
+    +'<div style="background:'+nutColor+';height:100%;width:'+Math.min(100,nutPct)+'%;border-radius:6px;transition:width 1s"></div>'
+    +'</div>'
+    +(protGap>20
+      ?'<div style="background:rgba(255,107,43,0.07);border-radius:10px;padding:8px 10px;font-size:11px;color:var(--muted2);line-height:1.7">'
+        +'Для роста формы нужно <strong style="color:white">'+(protGoal-20)+'–'+protGoal+'г белка</strong>/день.<br>'
+        +'Не хватает в среднем '+protGap+'г — это тормозит восстановление и рост.'
+        +'</div>'
+      :'<div style="font-size:11px;color:var(--green)">✓ Питание поддерживает рост формы</div>')
+    +'</div>';
+
+  // ── 10. AI COACH ──────────────────────────────────────
+  let aiTitle='', aiText='', aiColor='var(--green)';
+  if(status==='Форма растёт'){
+    aiTitle='📈 Форма стабильно растёт';
+    aiText = (aeroImp&&aeroImp>0?'Темп Z2 улучшился на '+aeroImp+' сек/км. ':'')
+      +(vo2trend>0?'VO₂max +'+vo2trend+' за месяц. ':'')
+      +'Для ускорения прогресса: добавь 1 темповую тренировку + 1 длинный бег в неделю.';
+    aiColor='var(--green)';
+  } else if(status==='Накоплена усталость'){
+    aiTitle='😴 Форма остановилась из-за усталости';
+    aiText='Снизь объём на 20–30% на следующие 5–7 дней. После восстановления форма быстро вернётся.';
+    aiColor='var(--orange)';
+  } else {
+    aiTitle='📊 Форма стабильна';
+    const suggestions=[];
+    if(avgPerWeek<3) suggestions.push('добавь 1–2 тренировки в неделю');
+    if(!z2pace) suggestions.push('добавь длинный бег Z2 1×/нед');
+    if(protGap>20) suggestions.push('увеличь белок до '+protGoal+'г/день');
+    if(suggestions.length===0) suggestions.push('добавь 1 интервальную тренировку в неделю');
+    aiText='Для роста формы: '+suggestions.join(', ')+'.';
+    aiColor='var(--yellow)';
+  }
+  html += '<div class="card" style="margin-bottom:10px;background:rgba(139,92,246,0.06);border:1px solid rgba(139,92,246,0.2)">'
+    +'<div style="font-size:13px;font-weight:700;margin-bottom:8px">🤖 AI Coach</div>'
+    +'<div style="font-size:13px;font-weight:700;color:'+aiColor+';margin-bottom:8px">'+aiTitle+'</div>'
+    +'<div style="font-size:12px;color:var(--muted2);line-height:1.8">'+aiText+'</div>'
+    +'</div>';
+
+  el.innerHTML = html;
 }
 
 async function loadRecoveryScreen(){
