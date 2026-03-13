@@ -323,7 +323,7 @@ function toggleTheme(){
       <button class="btn-primary" onclick="doLogin()">ВОЙТИ</button>
     </div>
     <div id="register-form" style="display:none">
-      <div class="input-group"><label class="input-label">Имя</label><input class="input-field" id="r-name" type="text" placeholder="Дмитрий"></div>
+      <div class="input-group"><label class="input-label">Имя</label><input class="input-field" id="r-name" type="text" placeholder="Имя (Дмитрий / Roman)" autocomplete="name" autocorrect="off" autocapitalize="words" spellcheck="false"></div>
       <div class="input-group"><label class="input-label">Email</label><input class="input-field" id="r-email" type="email" placeholder="your@email.com"></div>
       <div class="input-group"><label class="input-label">Пароль</label><input class="input-field" id="r-pass" type="password" placeholder="Минимум 6 символов"></div>
       <button class="btn-primary" onclick="doRegister()">СОЗДАТЬ АККАУНТ</button>
@@ -728,6 +728,11 @@ const DEFAULT_PLAN = [
   {day:'СБ',type:'run',icon:'🏃',label:'Темповый бег',color:'var(--orange)',detail:'8–12 км · 5:10–5:30 мин/км'},
 ];
 let USER_PLAN = JSON.parse(localStorage.getItem('user_plan')||'null') || DEFAULT_PLAN;
+const HUB_PERIODS = [
+  {k:'week', l:'Неделя'}, {k:'month', l:'Месяц'},
+  {k:'3months', l:'3 мес'}, {k:'year', l:'Год'}
+];
+let hubPeriod = 'month';
 let RACE_DATE = '2026-04-26';
 let RACE_NAME = 'Полумарафон 21 км — 26 апреля';
 
