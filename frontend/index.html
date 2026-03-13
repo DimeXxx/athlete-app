@@ -373,7 +373,7 @@ function toggleTheme(){
   <div class="screen-title">Питание</div>
   <div class="screen-sub" id="nut-date"></div>
 
-  <!-- Calories ring -->
+  <!-- 1. Calories -->
   <div class="card">
     <div class="cal-ring-wrap">
       <svg width="90" height="90" viewBox="0 0 100 100">
@@ -389,96 +389,131 @@ function toggleTheme(){
     </div>
   </div>
 
-  <!-- Macros -->
+  <!-- 2. Macros -->
   <div class="macro-row">
     <div class="macro-card"><div class="macro-val" style="color:var(--blue)" id="m-prot">0</div><div class="macro-label">Белок</div><div style="font-size:10px;color:var(--muted)">/ <span id="t-prot">150</span>г</div><div class="macro-bar"><div class="macro-fill" id="bar-prot" style="width:0%;background:var(--blue)"></div></div></div>
     <div class="macro-card"><div class="macro-val" style="color:var(--orange)" id="m-carbs">0</div><div class="macro-label">Углеводы</div><div style="font-size:10px;color:var(--muted)">/ <span id="t-carbs">230</span>г</div><div class="macro-bar"><div class="macro-fill" id="bar-carbs" style="width:0%;background:var(--orange)"></div></div></div>
     <div class="macro-card"><div class="macro-val" style="color:var(--aqua)" id="m-fat">0</div><div class="macro-label">Жиры</div><div style="font-size:10px;color:var(--muted)">/ <span id="t-fat">75</span>г</div><div class="macro-bar"><div class="macro-fill" id="bar-fat" style="width:0%;background:var(--aqua)"></div></div></div>
   </div>
 
-  <!-- Protein Priority -->
-  <div class="card" id="protein-priority-card" style="margin-bottom:10px">
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
-      <div class="card-title" style="margin-bottom:0">💪 Protein Priority</div>
-      <div id="protein-status-badge" style="font-size:11px;font-weight:700;padding:3px 10px;border-radius:8px"></div>
+  <!-- 3. Missing today -->
+  <div class="card" id="missing-today-card" style="display:none">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+      <div class="card-title" style="margin-bottom:0">⚡ Не хватает сегодня</div>
+      <div id="nut-score-badge" style="font-size:12px;font-weight:700;padding:3px 10px;border-radius:8px"></div>
     </div>
-    <div style="background:rgba(255,255,255,0.04);border-radius:8px;height:8px;overflow:hidden;margin-bottom:6px">
-      <div id="protein-priority-bar" style="height:100%;background:linear-gradient(90deg,var(--blue),var(--aqua));border-radius:8px;transition:width .8s;width:0%"></div>
-    </div>
-    <div style="font-size:12px;color:var(--muted)"><span id="prot-eaten-lbl">0</span> / <span id="prot-target-lbl">150</span> г белка сегодня</div>
-  </div>
-
-  <!-- Water tracker -->
-  <div class="card" style="margin-bottom:10px">
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
-      <div class="card-title" style="margin-bottom:0">💧 Вода</div>
-      <div style="font-size:13px;font-weight:700;color:var(--aqua)"><span id="water-ml">0</span> / 2500 мл</div>
-    </div>
-    <div style="background:rgba(255,255,255,0.04);border-radius:8px;height:6px;overflow:hidden;margin-bottom:10px">
-      <div id="water-bar" style="height:100%;background:linear-gradient(90deg,#00b4d8,var(--aqua));border-radius:8px;transition:width .5s;width:0%"></div>
-    </div>
-    <div style="display:flex;gap:8px">
-      <button onclick="addWater(200)" style="flex:1;padding:8px;background:rgba(0,229,204,0.08);border:1px solid rgba(0,229,204,0.2);border-radius:10px;color:var(--aqua);font-size:12px;font-weight:700;cursor:pointer">+200мл</button>
-      <button onclick="addWater(300)" style="flex:1;padding:8px;background:rgba(0,229,204,0.08);border:1px solid rgba(0,229,204,0.2);border-radius:10px;color:var(--aqua);font-size:12px;font-weight:700;cursor:pointer">+300мл</button>
-      <button onclick="addWater(500)" style="flex:1;padding:8px;background:rgba(0,229,204,0.08);border:1px solid rgba(0,229,204,0.2);border-radius:10px;color:var(--aqua);font-size:12px;font-weight:700;cursor:pointer">+500мл</button>
-      <button onclick="resetWater()" style="padding:8px 10px;background:rgba(255,255,255,0.04);border:1px solid var(--border);border-radius:10px;color:var(--muted);font-size:12px;cursor:pointer">↺</button>
-    </div>
-  </div>
-
-  <!-- Missing today -->
-  <div class="card" id="missing-today-card" style="display:none;margin-bottom:10px">
-    <div class="card-title">⚡ Не хватает сегодня</div>
     <div id="missing-today-content"></div>
   </div>
 
-  <!-- Recovery meal (shown if workout today) -->
-  <div class="card" id="recovery-meal-card" style="display:none;margin-bottom:10px">
-    <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
-      <div style="font-size:20px">🔄</div>
-      <div>
-        <div class="card-title" style="margin-bottom:0">Recovery питание</div>
-        <div style="font-size:11px;color:var(--muted)">После сегодняшней тренировки</div>
-      </div>
+  <!-- 4. Protein Priority -->
+  <div class="card" id="protein-priority-card">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+      <div class="card-title" style="margin-bottom:0">💪 Protein Priority</div>
+      <div id="protein-status-badge" style="font-size:11px;font-weight:700;padding:3px 10px;border-radius:8px"></div>
     </div>
-    <div id="recovery-meal-content"></div>
+    <div style="background:rgba(255,255,255,0.04);border-radius:8px;height:10px;overflow:hidden;margin-bottom:8px">
+      <div id="protein-priority-bar" style="height:100%;background:linear-gradient(90deg,var(--blue),var(--aqua));border-radius:8px;transition:width .8s;width:0%"></div>
+    </div>
+    <div style="display:flex;justify-content:space-between;align-items:center">
+      <div style="font-size:13px;color:var(--muted)"><span id="prot-eaten-lbl" style="color:var(--text);font-weight:700">0</span> / <span id="prot-target-lbl">150</span> г</div>
+      <div id="protein-action-hint" style="font-size:11px;color:var(--muted)"></div>
+    </div>
   </div>
 
-  <!-- Recommended dinner -->
-  <div class="card" id="recommended-dinner-card" style="display:none;margin-bottom:10px">
-    <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
-      <div style="font-size:20px">🍽️</div>
+  <!-- 5. Recommended dinner (after 14:00) -->
+  <div class="card" id="recommended-dinner-card" style="display:none">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
+      <div style="width:36px;height:36px;background:rgba(245,200,66,0.12);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">🍽️</div>
       <div>
-        <div class="card-title" style="margin-bottom:0">Рекомендованный ужин</div>
-        <div id="dinner-goal-text" style="font-size:11px;color:var(--muted)"></div>
+        <div class="card-title" style="margin-bottom:2px">Рекомендованный ужин</div>
+        <div id="dinner-goal-text" style="font-size:11px;color:var(--orange)"></div>
       </div>
     </div>
     <div id="recommended-dinner-content"></div>
   </div>
 
-  <!-- Food today + Quick add -->
+  <!-- 6. Recovery meal -->
+  <div class="card" id="recovery-meal-card" style="display:none">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
+      <div style="width:36px;height:36px;background:rgba(0,229,204,0.1);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">🔄</div>
+      <div>
+        <div class="card-title" style="margin-bottom:2px">Recovery питание</div>
+        <div id="recovery-workout-label" style="font-size:11px;color:var(--teal)"></div>
+      </div>
+    </div>
+    <div id="recovery-meal-content"></div>
+  </div>
+
+  <!-- 7. Energy balance (if garmin data) -->
+  <div class="card" id="energy-balance-card" style="display:none">
+    <div class="card-title">⚡ Energy Balance</div>
+    <div id="energy-balance-content"></div>
+  </div>
+
+  <!-- 8. Water tracker -->
+  <div class="card">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+      <div class="card-title" style="margin-bottom:0">💧 Вода</div>
+      <div id="water-status-label" style="font-size:11px;font-weight:700;padding:3px 10px;border-radius:8px"></div>
+    </div>
+    <div style="display:flex;align-items:baseline;gap:4px;margin-bottom:8px">
+      <span style="font-size:24px;font-weight:800;color:var(--aqua)" id="water-ml">0</span>
+      <span style="font-size:13px;color:var(--muted)">/ 2500 мл</span>
+    </div>
+    <div style="background:rgba(255,255,255,0.04);border-radius:8px;height:6px;overflow:hidden;margin-bottom:10px">
+      <div id="water-bar" style="height:100%;background:linear-gradient(90deg,#00b4d8,var(--aqua));border-radius:8px;transition:width .5s;width:0%"></div>
+    </div>
+    <div id="water-advice" style="font-size:11px;color:var(--muted);margin-bottom:10px"></div>
+    <div style="display:flex;gap:8px">
+      <button onclick="addWater(200)" style="flex:1;padding:9px;background:rgba(0,229,204,0.08);border:1px solid rgba(0,229,204,0.2);border-radius:10px;color:var(--aqua);font-size:12px;font-weight:700;cursor:pointer">+200</button>
+      <button onclick="addWater(300)" style="flex:1;padding:9px;background:rgba(0,229,204,0.08);border:1px solid rgba(0,229,204,0.2);border-radius:10px;color:var(--aqua);font-size:12px;font-weight:700;cursor:pointer">+300</button>
+      <button onclick="addWater(500)" style="flex:1;padding:9px;background:rgba(0,229,204,0.08);border:1px solid rgba(0,229,204,0.2);border-radius:10px;color:var(--aqua);font-size:12px;font-weight:700;cursor:pointer">+500</button>
+      <button onclick="resetWater()" style="padding:9px 12px;background:rgba(255,255,255,0.04);border:1px solid var(--border);border-radius:10px;color:var(--muted);font-size:13px;cursor:pointer">↺</button>
+    </div>
+  </div>
+
+  <!-- 9. Food today + Quick add -->
   <div class="card">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
       <div class="card-title" style="margin-bottom:0">Еда сегодня</div>
       <button onclick="toggleQuickAdd()" style="background:rgba(184,255,61,0.1);border:1px solid rgba(184,255,61,0.2);border-radius:10px;padding:6px 12px;color:var(--green);font-size:12px;font-weight:700;cursor:pointer">⚡ Быстро</button>
     </div>
-
-    <!-- Quick add panel -->
-    <div id="quick-add-panel" style="display:none;margin-bottom:12px">
-      <div style="font-size:11px;color:var(--muted);margin-bottom:8px;font-weight:600;text-transform:uppercase;letter-spacing:1px">Быстрое добавление</div>
+    <div id="quick-add-panel" style="display:none;margin-bottom:14px">
+      <div style="font-size:10px;color:var(--muted);margin-bottom:8px;font-weight:600;text-transform:uppercase;letter-spacing:1.5px">1 клик — добавлено</div>
       <div style="display:flex;flex-wrap:wrap;gap:6px">
-        <button onclick="quickAdd('Протеиновый смузи',300,40,20,8)" class="quick-btn">🥤 Протеин смузи</button>
-        <button onclick="quickAdd('Греческий йогурт',130,15,6,4)" class="quick-btn">🥛 Йогурт греч.</button>
+        <button onclick="quickAdd('Протеиновый смузи',300,40,20,8)" class="quick-btn">🥤 Протеин</button>
+        <button onclick="quickAdd('Греческий йогурт',130,15,6,4)" class="quick-btn">🥛 Йогурт</button>
         <button onclick="quickAdd('Яйца 2шт',140,12,1,10)" class="quick-btn">🥚 Яйца ×2</button>
+        <button onclick="quickAdd('Омлет 3 яйца',210,18,2,15)" class="quick-btn">🍳 Омлет</button>
         <button onclick="quickAdd('Банан',90,1,23,0)" class="quick-btn">🍌 Банан</button>
-        <button onclick="quickAdd('Куриная грудка 150г',165,31,0,4)" class="quick-btn">🍗 Курица 150г</button>
-        <button onclick="quickAdd('Творог 200г',140,22,6,2)" class="quick-btn">🧀 Творог 200г</button>
+        <button onclick="quickAdd('Куриная грудка 150г',165,31,0,4)" class="quick-btn">🍗 Курица</button>
+        <button onclick="quickAdd('Творог 200г',140,22,6,2)" class="quick-btn">🧀 Творог</button>
         <button onclick="quickAdd('Овсянка 60г',210,6,38,4)" class="quick-btn">🌾 Овсянка</button>
-        <button onclick="quickAdd('Рыба лосось 150г',220,30,0,11)" class="quick-btn">🐟 Лосось 150г</button>
+        <button onclick="quickAdd('Лосось 150г',220,30,0,11)" class="quick-btn">🐟 Лосось</button>
+        <button onclick="quickAdd('Тунец консерва',120,25,0,2)" class="quick-btn">🐠 Тунец</button>
+        <button onclick="quickAdd('Авокадо половина',120,1,4,11)" class="quick-btn">🥑 Авокадо</button>
+        <button onclick="quickAdd('Орехи 30г',180,4,6,16)" class="quick-btn">🥜 Орехи</button>
       </div>
     </div>
-
     <div id="food-list"></div>
     <button class="add-btn" style="margin-top:12px" onclick="openModal('food-modal')">+ Добавить вручную</button>
+  </div>
+
+  <!-- 10. Nutrition Score -->
+  <div class="card" id="nut-score-card" style="margin-top:4px">
+    <div style="display:flex;align-items:center;justify-content:space-between">
+      <div>
+        <div class="card-title" style="margin-bottom:4px">📊 Nutrition Score</div>
+        <div style="font-size:12px;color:var(--muted)" id="nut-score-desc">белок · калории · гидратация</div>
+      </div>
+      <div style="text-align:right">
+        <div style="font-size:36px;font-weight:800;letter-spacing:-1px" id="nut-score-num">—</div>
+        <div style="font-size:10px;color:var(--muted)">/100</div>
+      </div>
+    </div>
+    <div style="background:rgba(255,255,255,0.04);border-radius:6px;height:4px;overflow:hidden;margin-top:10px">
+      <div id="nut-score-bar" style="height:100%;border-radius:6px;transition:width 1s;width:0%"></div>
+    </div>
   </div>
 </div>
 
@@ -1284,19 +1319,31 @@ async function savePlan(){
 // ===== NUTRITION =====
 // ── Water tracker ──
 let waterMl = parseInt(localStorage.getItem('water_'+new Date().toDateString())||'0');
-function updateWaterUI(){
+
+function updateWaterUI(hadWorkout){
   const pct = Math.min(100, waterMl/2500*100);
   const el = document.getElementById('water-ml'); if(el) el.textContent = waterMl;
   const bar = document.getElementById('water-bar'); if(bar) bar.style.width = pct+'%';
+  const statusEl = document.getElementById('water-status-label');
+  const advEl = document.getElementById('water-advice');
+  if(statusEl){
+    if(pct >= 90){ statusEl.textContent='✅ Хорошая'; statusEl.style.cssText='background:rgba(184,255,61,0.1);color:var(--green);font-size:11px;font-weight:700;padding:3px 10px;border-radius:8px'; }
+    else if(pct >= 60){ statusEl.textContent='💧 Нормальная'; statusEl.style.cssText='background:rgba(0,229,204,0.1);color:var(--aqua);font-size:11px;font-weight:700;padding:3px 10px;border-radius:8px'; }
+    else{ statusEl.textContent='⚠️ Низкая'; statusEl.style.cssText='background:rgba(255,68,85,0.1);color:var(--red);font-size:11px;font-weight:700;padding:3px 10px;border-radius:8px'; }
+  }
+  if(advEl){
+    const need = Math.max(0, 2500-waterMl);
+    if(hadWorkout && pct < 80) advEl.textContent = `После тренировки рекомендуется +400 мл`;
+    else if(need > 0) advEl.textContent = `Ещё ${need} мл до нормы`;
+    else advEl.textContent = '🎉 Норма достигнута!';
+  }
 }
 function addWater(ml){ waterMl=Math.min(4000,waterMl+ml); localStorage.setItem('water_'+new Date().toDateString(),waterMl); updateWaterUI(); toast('💧 +'+ml+' мл'); }
 function resetWater(){ waterMl=0; localStorage.setItem('water_'+new Date().toDateString(),'0'); updateWaterUI(); }
-
 function toggleQuickAdd(){
   const p=document.getElementById('quick-add-panel');
   p.style.display=p.style.display==='none'?'block':'none';
 }
-
 async function quickAdd(name,cal,prot,carbs,fat){
   try{
     await post('/api/nutrition/',{meal_name:name,calories:cal,protein_g:prot,carbs_g:carbs,fat_g:fat});
@@ -1304,59 +1351,75 @@ async function quickAdd(name,cal,prot,carbs,fat){
   }catch(e){toast('Ошибка',true);}
 }
 
+function renderNutritionScore(prot,cal,tP,tCal){
+  const protScore = Math.min(40, Math.round(prot/tP*40));
+  const calScore  = cal > 0 && cal <= tCal ? Math.min(35, Math.round(35-(Math.abs(tCal-cal)/tCal)*35)) : 0;
+  const waterScore= Math.min(25, Math.round(waterMl/2500*25));
+  const total = protScore + calScore + waterScore;
+  const el = document.getElementById('nut-score-num');
+  const bar = document.getElementById('nut-score-bar');
+  const desc = document.getElementById('nut-score-desc');
+  if(el) el.textContent = total;
+  if(bar){
+    const color = total >= 75 ? 'var(--green)' : total >= 50 ? 'var(--yellow)' : 'var(--orange)';
+    bar.style.cssText = `height:100%;border-radius:6px;transition:width 1s;width:${total}%;background:${color}`;
+  }
+  if(desc) desc.textContent = `белок ${protScore}/40 · калории ${calScore}/35 · вода ${waterScore}/25`;
+}
+
 function renderMissingToday(prot,carbs,cal,tP,tC,tCal){
   const missProt = Math.max(0, tP-prot);
   const missCal  = Math.max(0, tCal-cal);
   const card = document.getElementById('missing-today-card');
   const cnt  = document.getElementById('missing-today-content');
+  const badge = document.getElementById('nut-score-badge');
   if(!card||!cnt) return;
-  if(missProt < 10 && missCal < 100){ card.style.display='none'; return; }
+  if(missProt < 5 && missCal < 50){ card.style.display='none'; return; }
   card.style.display='block';
-  let html = '<div style="display:flex;flex-direction:column;gap:8px;margin-bottom:12px">';
-  if(missProt >= 5) html += `<div style="display:flex;justify-content:space-between;align-items:center"><span style="font-size:13px">💪 Белок</span><span style="font-size:15px;font-weight:700;color:var(--blue)">+${Math.round(missProt)} г</span></div>`;
-  if(missCal >= 50) html += `<div style="display:flex;justify-content:space-between;align-items:center"><span style="font-size:13px">🔥 Калории</span><span style="font-size:15px;font-weight:700;color:var(--orange)">+${Math.round(missCal)} ккал</span></div>`;
-  html += '</div>';
-  if(missProt >= 15){
-    html += '<div style="font-size:11px;color:var(--muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:1px;font-weight:600">Добавь белок:</div>';
-    html += '<div style="display:flex;gap:6px;flex-wrap:wrap">';
-    html += `<button onclick="quickAdd('Яйца 2шт',140,12,1,10)" style="flex:1;padding:8px;background:rgba(61,139,255,0.1);border:1px solid rgba(61,139,255,0.2);border-radius:10px;color:var(--blue);font-size:12px;font-weight:700;cursor:pointer">🥚 +12г</button>`;
-    html += `<button onclick="quickAdd('Куриная грудка 150г',165,31,0,4)" style="flex:1;padding:8px;background:rgba(61,139,255,0.1);border:1px solid rgba(61,139,255,0.2);border-radius:10px;color:var(--blue);font-size:12px;font-weight:700;cursor:pointer">🍗 +31г</button>`;
-    html += `<button onclick="quickAdd('Протеиновый смузи',300,40,20,8)" style="flex:1;padding:8px;background:rgba(61,139,255,0.1);border:1px solid rgba(61,139,255,0.2);border-radius:10px;color:var(--blue);font-size:12px;font-weight:700;cursor:pointer">🥤 +40г</button>`;
-    html += '</div>';
+  // Score badge in this card
+  const pct = Math.round(Math.max(prot/tP, 0)*100);
+  if(badge){
+    if(pct>=90){badge.textContent='✅ Норма';badge.style.cssText='background:rgba(184,255,61,0.12);color:var(--green);font-size:11px;font-weight:700;padding:3px 10px;border-radius:8px';}
+    else if(pct>=60){badge.textContent='⚡ Добирай';badge.style.cssText='background:rgba(245,200,66,0.12);color:var(--yellow);font-size:11px;font-weight:700;padding:3px 10px;border-radius:8px';}
+    else{badge.textContent='⚠️ Мало';badge.style.cssText='background:rgba(255,68,85,0.12);color:var(--red);font-size:11px;font-weight:700;padding:3px 10px;border-radius:8px';}
+  }
+  let html = `<div style="display:flex;gap:10px;margin-bottom:12px">`;
+  if(missProt >= 5) html += `<div style="flex:1;background:rgba(61,139,255,0.08);border:1px solid rgba(61,139,255,0.15);border-radius:12px;padding:12px;text-align:center"><div style="font-size:22px;font-weight:800;color:var(--blue)">+${Math.round(missProt)}г</div><div style="font-size:10px;color:var(--muted);margin-top:2px">Белок</div></div>`;
+  if(missCal >= 50) html += `<div style="flex:1;background:rgba(255,107,43,0.08);border:1px solid rgba(255,107,43,0.15);border-radius:12px;padding:12px;text-align:center"><div style="font-size:22px;font-weight:800;color:var(--orange)">+${Math.round(missCal)}</div><div style="font-size:10px;color:var(--muted);margin-top:2px">Калории</div></div>`;
+  html += `</div>`;
+  if(missProt >= 10){
+    html += `<div style="font-size:11px;color:var(--muted);margin-bottom:8px;font-weight:600;text-transform:uppercase;letter-spacing:1px">Быстро добрать белок:</div>`;
+    html += `<div style="display:flex;gap:6px">`;
+    html += `<button onclick="quickAdd('Яйца 2шт',140,12,1,10)" style="flex:1;padding:9px 6px;background:rgba(61,139,255,0.1);border:1px solid rgba(61,139,255,0.2);border-radius:10px;color:var(--blue);font-size:11px;font-weight:700;cursor:pointer">🥚 +12г</button>`;
+    html += `<button onclick="quickAdd('Куриная грудка 150г',165,31,0,4)" style="flex:1;padding:9px 6px;background:rgba(61,139,255,0.1);border:1px solid rgba(61,139,255,0.2);border-radius:10px;color:var(--blue);font-size:11px;font-weight:700;cursor:pointer">🍗 +31г</button>`;
+    html += `<button onclick="quickAdd('Протеиновый смузи',300,40,20,8)" style="flex:1;padding:9px 6px;background:rgba(61,139,255,0.1);border:1px solid rgba(61,139,255,0.2);border-radius:10px;color:var(--blue);font-size:11px;font-weight:700;cursor:pointer">🥤 +40г</button>`;
+    html += `</div>`;
   }
   cnt.innerHTML = html;
 }
 
-function renderRecoveryMeal(workouts){
-  const card = document.getElementById('recovery-meal-card');
-  const cnt  = document.getElementById('recovery-meal-content');
-  if(!card||!cnt) return;
-  const todayStr = new Date().toISOString().slice(0,10);
-  const todayW = (workouts||[]).filter(w=>w.date===todayStr);
-  if(todayW.length===0){ card.style.display='none'; return; }
-  const w = todayW[0];
-  const isSwim = w.type==='Swimming';
-  const isRun  = w.type==='Running'||w.type==='RunLong';
-  const protNeed = isSwim ? 30 : 25;
-  const carbNeed = isRun  ? 50 : 40;
-  card.style.display='block';
-  cnt.innerHTML = `
-    <div style="display:flex;gap:8px;margin-bottom:10px">
-      <div style="flex:1;background:rgba(61,139,255,0.08);border:1px solid rgba(61,139,255,0.15);border-radius:10px;padding:10px;text-align:center">
-        <div style="font-size:18px;font-weight:800;color:var(--blue)">${protNeed}г</div>
-        <div style="font-size:10px;color:var(--muted)">Белок</div>
-      </div>
-      <div style="flex:1;background:rgba(255,107,43,0.08);border:1px solid rgba(255,107,43,0.15);border-radius:10px;padding:10px;text-align:center">
-        <div style="font-size:18px;font-weight:800;color:var(--orange)">${carbNeed}г</div>
-        <div style="font-size:10px;color:var(--muted)">Углеводы</div>
-      </div>
-    </div>
-    <div style="font-size:12px;color:var(--muted);line-height:1.8">
-      ${isSwim ? '🏊 После плавания:' : isRun ? '🏃 После бега:' : '💪 После тренировки:'}<br>
-      <span style="color:var(--text)">• Йогурт греческий + банан</span><br>
-      <span style="color:var(--text)">• Протеин + овсянка</span><br>
-      <span style="color:var(--text)">• Куриная грудка + рис</span>
-    </div>`;
+function renderProteinPriority(prot, tP){
+  const protPct = Math.min(100, prot/tP*100);
+  const need = Math.max(0, tP-prot);
+  const ppBar = document.getElementById('protein-priority-bar');
+  const ppBadge = document.getElementById('protein-status-badge');
+  const hint = document.getElementById('protein-action-hint');
+  const protEat = document.getElementById('prot-eaten-lbl');
+  const protTgt = document.getElementById('prot-target-lbl');
+  if(ppBar) ppBar.style.width = protPct+'%';
+  if(protEat) protEat.textContent = prot;
+  if(protTgt) protTgt.textContent = tP;
+  const hour = new Date().getHours();
+  const mealsLeft = hour < 13 ? 3 : hour < 17 ? 2 : 1;
+  if(ppBadge){
+    if(protPct >= 90){ ppBadge.textContent='✅ В норме'; ppBadge.style.cssText='background:rgba(184,255,61,0.1);color:var(--green);font-size:11px;font-weight:700;padding:3px 10px;border-radius:8px'; }
+    else if(protPct >= 60){ ppBadge.textContent='⚡ Добирай'; ppBadge.style.cssText='background:rgba(245,200,66,0.1);color:var(--yellow);font-size:11px;font-weight:700;padding:3px 10px;border-radius:8px'; }
+    else{ ppBadge.textContent='⚠️ Мало'; ppBadge.style.cssText='background:rgba(255,68,85,0.1);color:var(--red);font-size:11px;font-weight:700;padding:3px 10px;border-radius:8px'; }
+  }
+  if(hint && need > 0){
+    const perMeal = Math.round(need/mealsLeft);
+    hint.textContent = `нужно +${Math.round(need)}г (~${perMeal}г/приём)`;
+  } else if(hint){ hint.textContent = ''; }
 }
 
 function renderRecommendedDinner(prot,carbs,tP,tC){
@@ -1365,34 +1428,107 @@ function renderRecommendedDinner(prot,carbs,tP,tC){
   const goal = document.getElementById('dinner-goal-text');
   if(!card||!cnt) return;
   const hour = new Date().getHours();
-  if(hour < 14){ card.style.display='none'; return; } // show after 14:00
+  if(hour < 14){ card.style.display='none'; return; }
   card.style.display='block';
-  const needProt = tP - prot;
-  const needCarbs = tC - carbs;
-  let goalText = '';
-  let options = [];
-  if(needProt > 30 && needCarbs < 30){
-    goalText = 'Цель: добрать белок, углеводы в норме';
-    options = ['🍗 Куриная грудка + салат','🐟 Лосось + овощи','🥚 Омлет 3 яйца + творог'];
-  } else if(needProt > 30 && needCarbs > 30){
-    goalText = 'Цель: добрать белок и энергию';
-    options = ['🍗 Курица + рис + овощи','🐟 Рыба + картофель','🥛 Творог + банан + орехи'];
-  } else if(needCarbs > 50){
-    goalText = 'Цель: добрать углеводы';
-    options = ['🌾 Овсянка с фруктами','🍌 Банан + йогурт','🍚 Рис + овощи'];
+  const needProt = tP-prot; const needCarbs = tC-carbs;
+  let goalText=''; let options=[];
+  if(needProt > 40 && needCarbs < 20){
+    goalText='Цель: добрать белок, углеводы в норме';
+    options=[['🍗','Курица 200г + салат','165 ккал · 31г белка'],['🐟','Лосось + овощи','220 ккал · 30г белка'],['🥤','Протеиновый смузи','300 ккал · 40г белка']];
+  } else if(needProt > 25 && needCarbs > 30){
+    goalText='Цель: добрать белок и энергию';
+    options=[['🍗','Курица + рис + овощи','350 ккал · 35г белка'],['🐟','Рыба + картофель','280 ккал · 28г белка'],['🧀','Творог + банан + орехи','290 ккал · 24г белка']];
+  } else if(needCarbs > 60){
+    goalText='Цель: добрать углеводы';
+    options=[['🌾','Овсянка с фруктами','250 ккал · 8г белка'],['🍌','Банан + йогурт','200 ккал · 12г белка'],['🍚','Рис + овощи','280 ккал · 6г белка']];
   } else {
-    goalText = 'Ты молодец — цели почти выполнены!';
-    options = ['🥗 Лёгкий салат с курицей','🥛 Греческий йогурт','🥦 Овощи + яйца'];
+    goalText='Почти всё выполнено — лёгкий вариант';
+    options=[['🥗','Салат с курицей','200 ккал · 20г белка'],['🥛','Греческий йогурт','130 ккал · 15г белка'],['🥦','Овощи + яйца','180 ккал · 14г белка']];
   }
   if(goal) goal.textContent = goalText;
-  cnt.innerHTML = options.map(o=>`
-    <div style="display:flex;align-items:center;gap:10px;padding:10px;background:rgba(255,255,255,0.03);border-radius:10px;margin-bottom:6px;font-size:13px">${o}</div>
-  `).join('');
+  cnt.innerHTML = options.map(([em,name,sub])=>`
+    <div style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:rgba(255,255,255,0.03);border:1px solid var(--border);border-radius:12px;margin-bottom:6px;cursor:pointer" onclick="quickAdd('${name}',${sub.match(/\d+/)[0]},${sub.match(/(\d+)г белка/)?.[1]||0},30,5)">
+      <span style="font-size:20px">${em}</span>
+      <div style="flex:1"><div style="font-size:13px;font-weight:600">${name}</div><div style="font-size:11px;color:var(--muted)">${sub}</div></div>
+      <span style="font-size:11px;color:var(--green);font-weight:700">+ Добавить</span>
+    </div>`).join('');
+}
+
+function renderRecoveryMeal(workouts, hadWorkout){
+  const card = document.getElementById('recovery-meal-card');
+  const cnt  = document.getElementById('recovery-meal-content');
+  const lbl  = document.getElementById('recovery-workout-label');
+  if(!card||!cnt) return;
+  const todayStr = new Date().toISOString().slice(0,10);
+  const todayW = (workouts||[]).filter(w=>w.date===todayStr);
+  if(todayW.length===0){ card.style.display='none'; return; }
+  card.style.display='block';
+  const w = todayW[0];
+  const isSwim = w.type==='Swimming';
+  const isRun  = w.type==='Running'||w.type==='RunLong';
+  const protNeed = isSwim ? 30 : 25;
+  const carbNeed = isRun  ? 50 : 40;
+  const wLabel = isSwim ? `🏊 Плавание ${w.distance_km||''}км` : isRun ? `🏃 Бег ${w.distance_km||''}км` : `💪 Тренировка`;
+  if(lbl) lbl.textContent = wLabel + (w.calories ? ` · ${w.calories} ккал сожжено` : '');
+  cnt.innerHTML = `
+    <div style="display:flex;gap:8px;margin-bottom:12px">
+      <div style="flex:1;background:rgba(61,139,255,0.08);border:1px solid rgba(61,139,255,0.15);border-radius:12px;padding:10px;text-align:center">
+        <div style="font-size:20px;font-weight:800;color:var(--blue)">${protNeed}г</div>
+        <div style="font-size:10px;color:var(--muted);margin-top:2px">💪 Белок</div>
+      </div>
+      <div style="flex:1;background:rgba(255,107,43,0.08);border:1px solid rgba(255,107,43,0.15);border-radius:12px;padding:10px;text-align:center">
+        <div style="font-size:20px;font-weight:800;color:var(--orange)">${carbNeed}г</div>
+        <div style="font-size:10px;color:var(--muted);margin-top:2px">⚡ Углеводы</div>
+      </div>
+    </div>
+    <div style="font-size:12px;color:var(--muted);line-height:1.9">
+      <span style="color:var(--text)">• Йогурт греческий + банан</span><br>
+      <span style="color:var(--text)">• Протеин + овсянка</span><br>
+      <span style="color:var(--text)">• Куриная грудка + рис</span>
+    </div>`;
+}
+
+function renderEnergyBalance(cal, workouts){
+  const card = document.getElementById('energy-balance-card');
+  const cnt  = document.getElementById('energy-balance-content');
+  if(!card||!cnt) return;
+  const todayStr = new Date().toISOString().slice(0,10);
+  const todayW = (workouts||[]).filter(w=>w.date===todayStr);
+  const burned = todayW.reduce((s,w)=>s+(w.calories||0),0);
+  if(burned < 50){ card.style.display='none'; return; }
+  card.style.display='block';
+  const balance = cal - burned;
+  const balColor = balance < -200 ? 'var(--orange)' : balance > 200 ? 'var(--green)' : 'var(--aqua)';
+  const balLabel = balance < -500 ? '⚠️ Большой дефицит' : balance < -200 ? '📉 Дефицит' : balance > 300 ? '📈 Профицит' : '⚖️ Баланс';
+  cnt.innerHTML = `
+    <div style="display:flex;gap:8px;margin-bottom:10px">
+      <div style="flex:1;background:rgba(255,255,255,0.03);border-radius:10px;padding:10px;text-align:center">
+        <div style="font-size:16px;font-weight:700;color:var(--orange)">🔥 ${burned}</div>
+        <div style="font-size:10px;color:var(--muted);margin-top:2px">Расход</div>
+      </div>
+      <div style="flex:1;background:rgba(255,255,255,0.03);border-radius:10px;padding:10px;text-align:center">
+        <div style="font-size:16px;font-weight:700;color:var(--green)">🍽 ${cal}</div>
+        <div style="font-size:10px;color:var(--muted);margin-top:2px">Еда</div>
+      </div>
+      <div style="flex:1;background:rgba(255,255,255,0.03);border-radius:10px;padding:10px;text-align:center">
+        <div style="font-size:16px;font-weight:700;color:${balColor}">${balance > 0 ? '+' : ''}${balance}</div>
+        <div style="font-size:10px;color:var(--muted);margin-top:2px">Баланс</div>
+      </div>
+    </div>
+    <div style="font-size:11px;color:var(--muted);font-weight:600">${balLabel}</div>`;
 }
 
 async function loadNutrition(){
   document.getElementById('nut-date').textContent=today.toLocaleDateString('ru',{weekday:'long',day:'numeric',month:'long'});
   updateWaterUI();
+  let workouts = [];
+  try {
+    const hub = await get('/api/workouts/hub?period=week');
+    workouts = hub.workouts || [];
+  } catch(e){}
+  const hadWorkout = workouts.some(w=>w.date===new Date().toISOString().slice(0,10));
+  updateWaterUI(hadWorkout);
+
   try{
     const data=await get('/api/nutrition/today');
     const t=data.totals||{};const g=data.goals||{};
@@ -1414,38 +1550,18 @@ async function loadNutrition(){
     document.getElementById('bar-carbs').style.width=Math.min(100,carbs/tC*100)+'%';
     document.getElementById('bar-fat').style.width=Math.min(100,fat/tF*100)+'%';
 
-    // Protein Priority
-    const protPct = Math.min(100, prot/tP*100);
-    const ppBar = document.getElementById('protein-priority-bar');
-    const ppBadge = document.getElementById('protein-status-badge');
-    const protEat = document.getElementById('prot-eaten-lbl');
-    const protTgt = document.getElementById('prot-target-lbl');
-    if(ppBar) ppBar.style.width = protPct+'%';
-    if(protEat) protEat.textContent = prot;
-    if(protTgt) protTgt.textContent = tP;
-    if(ppBadge){
-      if(protPct >= 90){ ppBadge.textContent='✅ В норме'; ppBadge.style.cssText='background:rgba(184,255,61,0.1);color:var(--green);font-size:11px;font-weight:700;padding:3px 10px;border-radius:8px'; }
-      else if(protPct >= 60){ ppBadge.textContent='⚡ Добирай'; ppBadge.style.cssText='background:rgba(245,200,66,0.1);color:var(--yellow);font-size:11px;font-weight:700;padding:3px 10px;border-radius:8px'; }
-      else{ ppBadge.textContent='⚠️ Мало'; ppBadge.style.cssText='background:rgba(255,68,85,0.1);color:var(--red);font-size:11px;font-weight:700;padding:3px 10px;border-radius:8px'; }
-    }
-
-    // Missing today
     renderMissingToday(prot, carbs, cal, tP, tC, tCal);
-    // Recommended dinner
+    renderProteinPriority(prot, tP);
     renderRecommendedDinner(prot, carbs, tP, tC);
+    renderRecoveryMeal(workouts, hadWorkout);
+    renderEnergyBalance(cal, workouts);
+    renderNutritionScore(prot, cal, tP, tCal);
 
     if(!data.meals||data.meals.length===0){
-      document.getElementById('food-list').innerHTML='<div style="color:var(--muted);font-size:13px;padding:16px 0;text-align:center">Пусто — добавь первый приём пищи</div>';
+      document.getElementById('food-list').innerHTML='<div style="color:var(--muted);font-size:13px;padding:16px 0;text-align:center">Пусто — нажми ⚡ Быстро или + Добавить</div>';
     }else{
       document.getElementById('food-list').innerHTML=data.meals.map(m=>`<div class="food-item"><div><div class="food-name">${m.meal_name}</div><div class="food-macros">Б:${Math.round(m.protein_g)}г · У:${Math.round(m.carbs_g)}г · Ж:${Math.round(m.fat_g)}г</div></div><div style="display:flex;align-items:center"><div class="food-cal">${Math.round(m.calories)}</div><button class="food-del" onclick="deleteMeal(${m.id})">×</button></div></div>`).join('');
     }
-
-    // Recovery meal — load today's workouts
-    try {
-      const hub = await get('/api/workouts/hub?period=week');
-      renderRecoveryMeal(hub.workouts||[]);
-    } catch(e){}
-
   }catch(e){document.getElementById('food-list').innerHTML=`<div style="color:var(--red);font-size:13px">Ошибка: ${e.message}</div>`;}
 }
 
