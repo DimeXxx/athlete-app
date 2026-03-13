@@ -2833,27 +2833,15 @@ async function loadRecoveryScreen(){
   // ============ BUILD HTML ============
   let html = '<div class="screen-title">Recovery</div><div class="screen-sub">Восстановление и состояние</div>';
 
-  // 1. SCORE RING + BREAKDOWN
-  function fmtPt(v){ return (v>0?'+':'')+v; }
-  const bdRows = [
-    {label:'HRV',    pts: bd.hrv    !== undefined ? bd.hrv    : null, icon:'💜'},
-    {label:'Сон',    pts: bd.sleep  !== undefined ? bd.sleep  : null, icon:'😴'},
-    {label:'Пульс',  pts: bd.rhr    !== undefined ? bd.rhr    : null, icon:'❤️'},
-    {label:'Нагрузка', pts: bd.fatigue!== undefined ? bd.fatigue: null, icon:'🔥'},
-  ].filter(function(r){ return r.pts !== null; });
-
-  let bdHtml='';
-  bdRows.forEach(function(r){
-    const c=r.pts>=0?'var(--green)':'var(--red)';
-    bdHtml+='<div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0;border-bottom:1px solid rgba(255,255,255,0.05)">'
-      +'<span style="font-size:12px;color:var(--muted2)">'+r.icon+' '+r.label+'</span>'
-      +'<span style="font-size:12px;font-weight:700;color:'+c+'">'+fmtPt(r.pts)+'</span>'
-      +'</div>';
+  // 1. SCORE RING + HUMAN-READABLE REASONS
+  let reasonsHtml='';
+  reasons.forEach(function(r){
+    reasonsHtml+='<div style="font-size:11px;color:'+(r.bad?'var(--red)':'rgba(255,255,255,0.5)')+';line-height:1.8">'
+      +(r.bad?'↓ ':'✓ ')+r.txt+'</div>';
   });
 
-  html += '<div style="display:flex;gap:16px;align-items:flex-start;margin-bottom:14px">'
-    // Ring
-    +'<div style="flex-shrink:0">'
+  html += '<div style="display:flex;gap:14px;align-items:flex-start;margin-bottom:14px">'
+    +'<div style="flex-shrink:0;display:flex;flex-direction:column;align-items:center">'
     +'<svg width="110" height="110" viewBox="0 0 110 110">'
     +'<circle cx="55" cy="55" r="46" fill="none" stroke="rgba(255,255,255,0.06)" stroke-width="10"/>'
     +'<circle cx="55" cy="55" r="46" fill="none" stroke="'+scoreColor+'" stroke-width="10"'
@@ -2861,15 +2849,18 @@ async function loadRecoveryScreen(){
     +' stroke-linecap="round" transform="rotate(-90 55 55)" style="transition:stroke-dashoffset 1.2s ease"/>'
     +'<text x="55" y="51" text-anchor="middle" fill="white" font-size="26" font-weight="800">'+score+'</text>'
     +'<text x="55" y="66" text-anchor="middle" fill="rgba(255,255,255,0.4)" font-size="9">'+scoreLabel+'</text>'
-    +'</svg></div>'
-    // Breakdown
-    +'<div style="flex:1;background:rgba(255,255,255,0.03);border-radius:12px;padding:10px 12px">'
-    +'<div style="font-size:10px;color:var(--muted2);font-weight:600;margin-bottom:6px;letter-spacing:.5px">SCORE BREAKDOWN</div>'
-    +bdHtml
-    +'<div style="display:flex;justify-content:space-between;padding-top:5px;margin-top:2px">'
-    +'<span style="font-size:10px;color:var(--muted2)">База</span>'
-    +'<span style="font-size:10px;color:var(--muted2)">50</span>'
-    +'</div>'
+    +'</svg>'
+    // Score pts breakdown tiny
+    +'<div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:center;margin-top:6px;max-width:110px">'
+    +(bd.sleep!==undefined?'<span style="font-size:9px;padding:2px 5px;border-radius:5px;background:rgba(255,255,255,0.07);color:'+(bd.sleep>=0?'var(--green)':'var(--red)')+'">😴'+(bd.sleep>=0?'+':'')+bd.sleep+'</span>':'')
+    +(bd.hrv!==undefined?'<span style="font-size:9px;padding:2px 5px;border-radius:5px;background:rgba(255,255,255,0.07);color:'+(bd.hrv>=0?'var(--green)':'var(--red)')+'">💜'+(bd.hrv>=0?'+':'')+bd.hrv+'</span>':'')
+    +(bd.rhr!==undefined?'<span style="font-size:9px;padding:2px 5px;border-radius:5px;background:rgba(255,255,255,0.07);color:'+(bd.rhr>=0?'var(--green)':'var(--red)')+'">❤️'+(bd.rhr>=0?'+':'')+bd.rhr+'</span>':'')
+    +(bd.fatigue!==undefined?'<span style="font-size:9px;padding:2px 5px;border-radius:5px;background:rgba(255,255,255,0.07);color:'+(bd.fatigue>=0?'var(--green)':'var(--red)')+'">🔥'+(bd.fatigue>=0?'+':'')+bd.fatigue+'</span>':'')
+    +'</div></div>'
+    // Right: reasons as text
+    +'<div style="flex:1;padding-top:8px">'
+    +'<div style="font-size:13px;font-weight:700;color:'+scoreColor+';margin-bottom:8px">'+scoreLabel+'</div>'
+    +reasonsHtml
     +'</div></div>';
 
   // 2. METRICS HRV / RHR / SLEEP with baseline
@@ -2912,29 +2903,50 @@ async function loadRecoveryScreen(){
     +(sleepStatus?'<div style="font-size:9px;color:'+sleepColor+';font-weight:600;margin-top:2px">'+sleepStatus+'</div>':'')
     +'</div></div>';
 
-  // 3. FATIGUE
+  // 3. FATIGUE with 7-day mini trend
+  // Build fatigue trend from recovery_trend scores (higher score = lower fatigue)
+  const fatigueTrend = trend.map(function(t){ return Math.max(0,Math.min(100,100-t.score)); });
+  let fatigueBarsHtml='';
+  if(fatigueTrend.length>0){
+    const maxF=Math.max.apply(null,fatigueTrend.concat([1]));
+    fatigueTrend.forEach(function(v,i){
+      const h=Math.max(3,Math.round((v/maxF)*30));
+      const c=v>=60?'var(--red)':v>=35?'var(--yellow)':'var(--green)';
+      const isLast=(i===fatigueTrend.length-1);
+      fatigueBarsHtml+='<div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:2px">'
+        +'<div style="width:100%;height:'+h+'px;background:'+c+';border-radius:3px;opacity:'+(isLast?'1':'.6')+';'+(isLast?'border:1px solid '+c:'')+'"></div>'
+        +'</div>';
+    });
+  }
   html += '<div class="card" style="margin-bottom:10px">'
     +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">'
-    +'<div style="font-size:13px;font-weight:700">🔥 Усталость</div>'
+    +'<div><div style="font-size:13px;font-weight:700">🔥 Усталость</div>'
+    +'<div style="font-size:11px;color:var(--muted2);margin-top:2px">'+consec+' '+(consec===1?'день':consec<5?'дня':'дней')+' подряд</div></div>'
     +'<div style="font-size:11px;color:'+fatigueColor+';font-weight:700;text-transform:uppercase;letter-spacing:.5px">'+fatigueLabel+'</div>'
     +'</div>'
-    +'<div style="background:rgba(255,255,255,0.07);border-radius:6px;height:7px;overflow:hidden;margin-bottom:8px">'
+    +'<div style="background:rgba(255,255,255,0.07);border-radius:6px;height:7px;overflow:hidden;margin-bottom:10px">'
     +'<div style="background:'+fatigueColor+';height:100%;width:'+fatiguePct+'%;border-radius:6px;transition:width 1s ease"></div>'
     +'</div>'
-    +'<div style="display:flex;justify-content:space-between">'
-    +'<div style="font-size:12px;color:var(--muted2)">'+consec+' '+(consec===1?'день':consec<5?'дня':'дней')+' подряд</div>'
-    +'<div style="font-size:11px;color:var(--muted2)">последние 7 дней</div>'
-    +'</div>'
-    +'<div style="font-size:11px;color:var(--muted2);margin-top:6px">'
+    // 7-day mini trend
+    +(fatigueTrend.length>0
+      ?'<div style="margin-bottom:8px"><div style="font-size:9px;color:var(--muted2);margin-bottom:4px;letter-spacing:.5px">ПОСЛЕДНИЕ 7 ДНЕЙ</div>'
+        +'<div style="display:flex;gap:3px;height:34px;align-items:flex-end">'+fatigueBarsHtml+'</div></div>'
+      :'')
+    +'<div style="font-size:11px;color:var(--muted2)">'
     +(fatigueLabel==='высокая'?'⚠️ Накопление нагрузки — рекомендуется отдых':fatigueLabel==='средняя'?'💛 Умеренная усталость — контролируй интенсивность':'✅ Нагрузка в норме — можно тренироваться')
     +'</div></div>';
 
-  // 4. TRAINING LOAD
+  // 4. TRAINING LOAD with human description
   const loadStatus = loadChg>20?'⚠️ рост нагрузки':loadChg>10?'умеренный рост':loadChg<-10?'снижение нагрузки':'✅ безопасный диапазон';
   const loadColor  = loadChg>20?'var(--red)':loadChg>10?'var(--yellow)':'var(--green)';
+  const loadDesc   = loadChg>20?'Резкий рост нагрузки увеличивает риск травм. Рекомендуется добавить лёгкую тренировку вместо интенсивной.'
+    : loadChg>10?'Умеренный рост нагрузки — следи за сном и HRV.'
+    : loadChg<-20?'Нагрузка снижена — хорошее время для качественного восстановления.'
+    : loadChg<-10?'Нагрузка снижена — можно немного добавить интенсивности.'
+    : 'Нагрузка стабильна — продолжай в том же ритме.';
   html += '<div class="card" style="margin-bottom:10px">'
     +'<div style="font-size:13px;font-weight:700;margin-bottom:10px">📈 Training Load</div>'
-    +'<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:8px">'
+    +'<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:10px">'
     +'<div style="text-align:center"><div style="font-size:10px;color:var(--muted2);margin-bottom:3px">7 дней</div>'
     +'<div style="font-size:18px;font-weight:800;color:white">'+load7d+'</div>'
     +'<div style="font-size:9px;color:var(--muted2)">мин</div></div>'
@@ -2943,10 +2955,11 @@ async function loadRecoveryScreen(){
     +'<div style="font-size:9px;color:var(--muted2)">мин</div></div>'
     +'<div style="text-align:center"><div style="font-size:10px;color:var(--muted2);margin-bottom:3px">изменение</div>'
     +'<div style="font-size:18px;font-weight:800;color:'+loadColor+'">'+(loadChg>0?'+':'')+loadChg+'%</div>'
-    +'<div style="font-size:9px;color:var(--muted2)">рост</div></div>'
+    +'<div style="font-size:9px;color:'+loadColor+';margin-top:2px">'+loadStatus.replace('⚠️ ','').replace('✅ ','')+'</div></div>'
     +'</div>'
-    +'<div style="font-size:12px;color:'+loadColor+';font-weight:600">'+loadStatus+'</div>'
-    +'</div>';
+    +'<div style="background:rgba(255,255,255,0.04);border-radius:10px;padding:8px 10px">'
+    +'<div style="font-size:11px;color:var(--muted2);line-height:1.6">'+loadDesc+'</div>'
+    +'</div></div>';
 
   // 5. INJURY RISK
   let injReasonsHtml = injuryReasons.length>0
@@ -3059,10 +3072,31 @@ async function loadRecoveryScreen(){
     +'<div style="font-size:12px;font-weight:700;color:var(--red);margin-bottom:8px">⛔ Не стоит</div>'+avoidHtml+'</div>'
     +'</div>';
 
-  // 11. IMPACT PREDICTION
-  html += '<div class="card" style="margin-bottom:10px;background:rgba(139,92,246,0.06);border:1px solid rgba(139,92,246,0.15)">'
-    +'<div style="font-size:13px;font-weight:700;margin-bottom:6px">🔮 Recovery Impact</div>'
-    +'<div style="font-size:12px;color:var(--muted2);line-height:1.7">'+impactText+'</div>'
+  // 11. ADAPTIVE TRAINING SUGGESTION + IMPACT
+  let adaptiveTitle='', adaptiveText='', adaptiveSuggest='', adaptiveColor='var(--green)';
+  if(score>=75){
+    adaptiveTitle='🚀 Отличный день для нагрузки';
+    adaptiveSuggest=score>=85?'Темповый бег 8–10км или интервалы 6×800м':'Плановая тренировка в полном объёме';
+    adaptiveText=impactText;
+    adaptiveColor='var(--green)';
+  } else if(score>=55){
+    adaptiveTitle='💛 Снизь интенсивность';
+    adaptiveSuggest='Замени интервалы → лёгкий бег Z1–Z2 30–40 мин или плавание 1500м';
+    adaptiveText=impactText;
+    adaptiveColor='var(--yellow)';
+  } else {
+    adaptiveTitle='🛑 День восстановления';
+    adaptiveSuggest='Ходьба 30–40 мин или растяжка. Избегай нагрузки выше Z1.';
+    adaptiveText=impactText;
+    adaptiveColor='var(--orange)';
+  }
+  html += '<div class="card" style="margin-bottom:10px;background:rgba(139,92,246,0.05);border:1px solid rgba(139,92,246,0.15)">'
+    +'<div style="font-size:13px;font-weight:700;margin-bottom:8px">🎯 Adaptive Training</div>'
+    +'<div style="background:rgba(255,255,255,0.04);border-radius:10px;padding:10px;margin-bottom:8px">'
+    +'<div style="font-size:12px;font-weight:700;color:'+adaptiveColor+';margin-bottom:4px">'+adaptiveTitle+'</div>'
+    +'<div style="font-size:12px;color:white;margin-bottom:4px">'+adaptiveSuggest+'</div>'
+    +'</div>'
+    +'<div style="font-size:11px;color:var(--muted2);line-height:1.7">🔮 '+adaptiveText+'</div>'
     +'</div>';
 
   // 12. RECOVERY TREND
