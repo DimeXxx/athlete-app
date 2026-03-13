@@ -2749,208 +2749,219 @@ async function loadRecoveryScreen(){
   let cc={};
   try{ cc=await get('/api/ai/command-center'); }catch(e){}
 
-  const score    = cc.score||0;
+  const score      = cc.score||0;
   const scoreLabel = cc.score_label||'Нет данных';
   const scoreColor = score>=70?'var(--green)':score>=50?'var(--yellow)':'var(--orange)';
-  const m        = cc.metrics||{};
-  const alerts   = cc.alerts||[];
-  const consec   = cc.consec_days||0;
-  const fatiguePct = Math.min(consec*15,80);
+  const bd         = cc.score_breakdown||{};          // {sleep, hrv, rhr, fatigue}
+  const hrv        = parseFloat(cc.hrv)||0;
+  const hrvAvg     = parseFloat(cc.hrv_avg)||0;
+  const rhr        = parseFloat(cc.rhr)||0;
+  const sleepH     = parseFloat(cc.sleep_h)||0;
+  const consec     = cc.consec_days||0;
+  const fatiguePct = cc.fatigue_pct||Math.min(consec*15,80);
   const fatigueLabel = fatiguePct>=60?'высокая':fatiguePct>=30?'средняя':'низкая';
   const fatigueColor = fatiguePct>=60?'var(--red)':fatiguePct>=30?'var(--yellow)':'var(--green)';
-  const nutGap   = cc.prot_gap||0;
-  const hrv      = parseFloat(m.hrv)||0;
-  const hrvAvg   = parseFloat(m.hrv_avg)||0;
-  const rhr      = parseFloat(m.rhr)||0;
-  const sleepH   = parseFloat(m.sleep_h)||0;
+  const nutGap     = cc.prot_gap||0;
+  const protGoal   = cc.prot_goal||150;
+  const load7d     = cc.training_load_7d||0;
+  const loadPrev   = cc.training_load_prev7d||cc.training_load_7d||0;
+  const loadChg    = cc.training_load_change_pct||0;
+  const trend      = cc.recovery_trend||[];
+  const waterToday = cc.water_today||0;
+  const waterGoal  = cc.water_goal||2500;
+  const waterLeft  = Math.max(0, waterGoal - waterToday);
+  const painHist   = cc.pain_history||{};
+  const savedPain  = JSON.parse(localStorage.getItem('pain_check')||'{}');
+  const totalPain  = Object.values(savedPain).reduce(function(s,v){return s+v;},0);
+  const maxHR      = parseInt((cc.goals&&cc.goals.max_hr_manual)||184);
 
-  // Score reasons
-  const reasons=[];
-  if(hrv>0&&hrvAvg>0){
-    if(hrv<hrvAvg*0.9) reasons.push({icon:'↓',txt:'HRV ниже нормы',bad:true});
-    else if(hrv>hrvAvg*1.05) reasons.push({icon:'↑',txt:'HRV выше нормы',bad:false});
-    else reasons.push({icon:'✓',txt:'HRV в норме',bad:false});
-  }
-  if(sleepH>0){
-    if(sleepH<6) reasons.push({icon:'↓',txt:'мало сна',bad:true});
-    else if(sleepH>=7.5) reasons.push({icon:'✓',txt:'сон хороший',bad:false});
-    else reasons.push({icon:'~',txt:'сон нормальный',bad:false});
-  }
-  if(consec>=4) reasons.push({icon:'↑',txt:'нагрузка повышена',bad:true});
-  else if(consec>=2) reasons.push({icon:'~',txt:'нагрузка умеренная',bad:false});
-  else reasons.push({icon:'✓',txt:'нагрузка низкая',bad:false});
-
-  // HRV
-  let hrvStatus='', hrvStatusColor='var(--muted2)';
-  if(hrv>0&&hrvAvg>0){
-    if(hrv<hrvAvg*0.88){hrvStatus='ниже базового';hrvStatusColor='var(--red)';}
-    else if(hrv>hrvAvg*1.08){hrvStatus='выше базового';hrvStatusColor='var(--green)';}
-    else{hrvStatus='в норме';hrvStatusColor='var(--green)';}
-  }
-  const hrvRange = hrvAvg>0 ? 'норма '+Math.round(hrvAvg*0.9)+'–'+Math.round(hrvAvg*1.1) : 'синхронизируй Garmin';
-
-  // RHR
-  let rhrDiff='', rhrColor='var(--muted2)';
-  if(rhr>0){
-    const base=parseInt(localStorage.getItem('rhr_base'))||rhr;
-    if(!localStorage.getItem('rhr_base')) localStorage.setItem('rhr_base',rhr);
-    const diff=Math.round(rhr-base);
-    rhrDiff=diff>0?'+'+diff+' выше базового':diff<0?diff+' ниже базового':'на уровне базового';
-    rhrColor=diff>5?'var(--red)':diff>2?'var(--yellow)':'var(--green)';
-  }
-
-  // Sleep
-  let sleepStatus='', sleepColor='var(--muted2)';
-  if(sleepH>0){
-    if(sleepH>=8){sleepStatus='отлично';sleepColor='var(--green)';}
-    else if(sleepH>=7){sleepStatus='хорошо';sleepColor='var(--green)';}
-    else if(sleepH>=6){sleepStatus='нормально';sleepColor='var(--yellow)';}
-    else{sleepStatus='мало';sleepColor='var(--red)';}
-  }
-
-  // Training load
-  const loadDiff = consec>=2 ? Math.round((consec-1)/Math.max(1,consec-1)*15) : 0;
-  const loadStatus = consec>=5?'⚠️ рост нагрузки':consec>=3?'умеренный рост':'в безопасном диапазоне';
-  const loadColor = consec>=5?'var(--red)':consec>=3?'var(--yellow)':'var(--green)';
-
-  // Injury risk
-  const savedPain=JSON.parse(localStorage.getItem('pain_check')||'{}');
-  const totalPain=Object.values(savedPain).reduce(function(s,v){return s+v;},0);
+  // ---- Injury risk ----
   const injuryReasons=[];
-  if(consec>=5) injuryReasons.push(consec+' дней без отдыха');
+  if(loadChg>20) injuryReasons.push('рост нагрузки +'+loadChg+'%');
   if(hrv>0&&hrvAvg>0&&hrv<hrvAvg*0.85) injuryReasons.push('HRV значительно ниже нормы');
+  if(consec>=5) injuryReasons.push(consec+' дней без отдыха');
   if(sleepH>0&&sleepH<6) injuryReasons.push('хроническое недосыпание');
-  if(totalPain>4) injuryReasons.push('боли в теле');
+  if(totalPain>4) injuryReasons.push('боли в теле (body check)');
   let injuryRisk='Low', injuryColor='var(--green)';
   if(injuryReasons.length>=3||totalPain>6){injuryRisk='High';injuryColor='var(--red)';}
   else if(injuryReasons.length>=1||totalPain>2){injuryRisk='Medium';injuryColor='var(--yellow)';}
 
-  // Recovery trend
-  const trend=cc.recovery_trend||[];
-  const trendDots=trend.slice(-7);
-
-  // Dynamic advice
-  const adviceList=[];
-  if(nutGap>30) adviceList.push('добрать '+nutGap+'г белка');
-  if(hrv>0&&hrvAvg>0&&hrv<hrvAvg*0.9) adviceList.push('снизь интенсивность тренировки');
-  if(sleepH>0&&sleepH<7) adviceList.push('ложись спать на 30 мин раньше');
-  if(consec>=3) adviceList.push('лёгкая растяжка или прокатка');
-  if(adviceList.length===0) adviceList.push('отличный день для качественной тренировки');
-
-  // Can / avoid
+  // ---- Can / avoid with HR zones ----
+  const z1max = Math.round(maxHR*0.6);
+  const z2max = Math.round(maxHR*0.7);
+  const z3max = Math.round(maxHR*0.8);
   const canDo=[], avoid=[];
   if(score>=70){
-    canDo.push('темповый бег','плавание','силовая','велосипед');
+    canDo.push('темповый бег Z3–Z4 (<'+z3max+' уд/мин)','плавание в темпе','силовая тренировка','велосипед Z2–Z3');
     avoid.push('—');
   } else if(score>=50){
-    canDo.push('плавание','ходьба','лёгкий бег Z2','йога');
-    avoid.push('интервалы','темповый бег','тяжёлая силовая');
+    canDo.push('плавание восстановительное','ходьба (<'+z1max+' уд/мин)','лёгкий бег Z1–Z2 (<'+z2max+' уд/мин)','йога / растяжка');
+    avoid.push('интервалы и Z4–Z5','темповый бег','тяжёлая силовая');
   } else {
-    canDo.push('ходьба','растяжка','восстановительное плавание');
-    avoid.push('интенсивная нагрузка','соревнования','силовая');
+    canDo.push('ходьба <'+z1max+' уд/мин','растяжка 15 мин','восстановительное плавание Z1');
+    avoid.push('любая нагрузка >Z2','соревнования','силовая');
   }
 
-  // Protocol
+  // ---- Dynamic protocol ----
   const protocol=[];
-  if(sleepH<7.5) protocol.push('🛌 Сон 8+ часов');
-  protocol.push('💧 Гидратация');
-  if(hrv>0&&hrvAvg>0&&hrv<hrvAvg*0.9) protocol.push('🧘 Дыхание / медитация');
-  if(consec>=2) protocol.push('🤸 Растяжка 10–15 мин');
-  if(score<60) protocol.push('🏊 Восстановительное плавание');
-  protocol.push('🥩 Белок к каждому приёму');
-  if(score<70) protocol.push('💊 Магний перед сном');
+  if(sleepH>0&&sleepH<7.5) protocol.push({icon:'🛌', text:'Сон 8+ часов — ложись раньше'});
+  else protocol.push({icon:'🛌', text:'Поддерживай режим сна'});
+  if(waterLeft>500) protocol.push({icon:'💧', text:'Выпей ещё '+waterLeft+'мл воды'});
+  else protocol.push({icon:'💧', text:'Гидратация в норме'});
+  if(hrv>0&&hrvAvg>0&&hrv<hrvAvg*0.9) protocol.push({icon:'🧘', text:'Дыхание / медитация 10 мин'});
+  if(consec>=2) protocol.push({icon:'🤸', text:'Растяжка и прокатка пеной'});
+  if(score<60) protocol.push({icon:'🏊', text:'Восстановительное плавание 1000м'});
+  if(nutGap>30) protocol.push({icon:'🥩', text:'Добрать белок: '+nutGap+'г'});
+  if(score<70) protocol.push({icon:'💊', text:'Магний перед сном'});
+
+  // ---- Impact prediction ----
+  let impactText='';
+  if(score>=70) impactText='Если сегодня сделать качественную тренировку, завтра усталость +10–15%. Ты в форме!';
+  else if(score>=50){
+    const addFatigue = Math.round((100-score)*0.35);
+    impactText='Если сегодня сделать интервалы, вероятность усталости завтра +'+addFatigue+'%. Лучше выбрать Z1–Z2.';
+  } else {
+    impactText='Тренировка сегодня ухудшит восстановление на 1–2 дня. Лучше активный отдых.';
+  }
 
   // ============ BUILD HTML ============
   let html = '<div class="screen-title">Recovery</div><div class="screen-sub">Восстановление и состояние</div>';
 
-  // 1. Score ring + reasons
-  let reasonsHtml = '';
-  reasons.forEach(function(r){
-    reasonsHtml += '<div style="font-size:12px;color:'+(r.bad?'var(--red)':'rgba(255,255,255,0.55)')+'"><span style="font-weight:700;margin-right:4px">'+r.icon+'</span>'+r.txt+'</div>';
+  // 1. SCORE RING + BREAKDOWN
+  function fmtPt(v){ return (v>0?'+':'')+v; }
+  const bdRows = [
+    {label:'HRV',    pts: bd.hrv    !== undefined ? bd.hrv    : null, icon:'💜'},
+    {label:'Сон',    pts: bd.sleep  !== undefined ? bd.sleep  : null, icon:'😴'},
+    {label:'Пульс',  pts: bd.rhr    !== undefined ? bd.rhr    : null, icon:'❤️'},
+    {label:'Нагрузка', pts: bd.fatigue!== undefined ? bd.fatigue: null, icon:'🔥'},
+  ].filter(function(r){ return r.pts !== null; });
+
+  let bdHtml='';
+  bdRows.forEach(function(r){
+    const c=r.pts>=0?'var(--green)':'var(--red)';
+    bdHtml+='<div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0;border-bottom:1px solid rgba(255,255,255,0.05)">'
+      +'<span style="font-size:12px;color:var(--muted2)">'+r.icon+' '+r.label+'</span>'
+      +'<span style="font-size:12px;font-weight:700;color:'+c+'">'+fmtPt(r.pts)+'</span>'
+      +'</div>';
   });
-  html += '<div style="display:flex;flex-direction:column;align-items:center;padding:16px 0 4px">'
-    + '<svg width="130" height="130" viewBox="0 0 130 130">'
-    + '<circle cx="65" cy="65" r="54" fill="none" stroke="rgba(255,255,255,0.06)" stroke-width="11"/>'
-    + '<circle cx="65" cy="65" r="54" fill="none" stroke="'+scoreColor+'" stroke-width="11"'
-    + ' stroke-dasharray="339" stroke-dashoffset="'+(339-339*score/100)+'"'
-    + ' stroke-linecap="round" transform="rotate(-90 65 65)" style="transition:stroke-dashoffset 1.2s ease"/>'
-    + '<text x="65" y="60" text-anchor="middle" fill="white" font-size="32" font-weight="800">'+score+'</text>'
-    + '<text x="65" y="77" text-anchor="middle" fill="rgba(255,255,255,0.45)" font-size="10">'+scoreLabel+'</text>'
-    + '</svg>'
-    + '<div style="margin-top:10px;display:flex;flex-direction:column;align-items:center;gap:5px">'+reasonsHtml+'</div>'
-    + '</div>';
 
-  // 2. Metrics
-  html += '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin:14px 0">'
-    + '<div class="card" style="text-align:center;padding:12px 6px">'
-    + '<div style="font-size:10px;color:var(--muted2);margin-bottom:4px">💜 HRV</div>'
-    + '<div style="font-size:24px;font-weight:800;color:#a855f7;line-height:1">'+(hrv||'—')+'</div>'
-    + '<div style="font-size:9px;color:var(--muted2);margin-top:3px">'+hrvRange+'</div>'
-    + (hrvStatus ? '<div style="font-size:9px;color:'+hrvStatusColor+';font-weight:600;margin-top:2px">'+hrvStatus+'</div>' : '')
-    + '</div>'
-    + '<div class="card" style="text-align:center;padding:12px 6px">'
-    + '<div style="font-size:10px;color:var(--muted2);margin-bottom:4px">❤️ Пульс покоя</div>'
-    + '<div style="font-size:24px;font-weight:800;color:var(--red);line-height:1">'+(rhr||'—')+'</div>'
-    + (rhrDiff ? '<div style="font-size:9px;color:'+rhrColor+';margin-top:3px">'+rhrDiff+'</div>' : '<div style="font-size:9px;color:var(--muted2);margin-top:3px">уд/мин</div>')
-    + '</div>'
-    + '<div class="card" style="text-align:center;padding:12px 6px">'
-    + '<div style="font-size:10px;color:var(--muted2);margin-bottom:4px">😴 Сон</div>'
-    + '<div style="font-size:24px;font-weight:800;color:var(--blue);line-height:1">'+(sleepH||'—')+'</div>'
-    + '<div style="font-size:9px;color:var(--muted2);margin-top:3px">'+(sleepH?'часов':'')+'</div>'
-    + (sleepStatus ? '<div style="font-size:9px;color:'+sleepColor+';font-weight:600;margin-top:2px">'+sleepStatus+'</div>' : '')
-    + '</div></div>';
+  html += '<div style="display:flex;gap:16px;align-items:flex-start;margin-bottom:14px">'
+    // Ring
+    +'<div style="flex-shrink:0">'
+    +'<svg width="110" height="110" viewBox="0 0 110 110">'
+    +'<circle cx="55" cy="55" r="46" fill="none" stroke="rgba(255,255,255,0.06)" stroke-width="10"/>'
+    +'<circle cx="55" cy="55" r="46" fill="none" stroke="'+scoreColor+'" stroke-width="10"'
+    +' stroke-dasharray="289" stroke-dashoffset="'+(289-289*score/100)+'"'
+    +' stroke-linecap="round" transform="rotate(-90 55 55)" style="transition:stroke-dashoffset 1.2s ease"/>'
+    +'<text x="55" y="51" text-anchor="middle" fill="white" font-size="26" font-weight="800">'+score+'</text>'
+    +'<text x="55" y="66" text-anchor="middle" fill="rgba(255,255,255,0.4)" font-size="9">'+scoreLabel+'</text>'
+    +'</svg></div>'
+    // Breakdown
+    +'<div style="flex:1;background:rgba(255,255,255,0.03);border-radius:12px;padding:10px 12px">'
+    +'<div style="font-size:10px;color:var(--muted2);font-weight:600;margin-bottom:6px;letter-spacing:.5px">SCORE BREAKDOWN</div>'
+    +bdHtml
+    +'<div style="display:flex;justify-content:space-between;padding-top:5px;margin-top:2px">'
+    +'<span style="font-size:10px;color:var(--muted2)">База</span>'
+    +'<span style="font-size:10px;color:var(--muted2)">50</span>'
+    +'</div>'
+    +'</div></div>';
 
-  // 3. Fatigue
+  // 2. METRICS HRV / RHR / SLEEP with baseline
+  const hrvBase = hrvAvg>0 ? Math.round(hrvAvg) : null;
+  const rhrBase = parseInt(localStorage.getItem('rhr_base'))||rhr||null;
+  if(rhr>0&&!localStorage.getItem('rhr_base')) localStorage.setItem('rhr_base', rhr);
+  const rhrDiff = (rhr>0&&rhrBase) ? Math.round(rhr-rhrBase) : 0;
+  const rhrDiffTxt = rhrDiff>0?'+'+rhrDiff+' выше':rhrDiff<0?rhrDiff+' ниже':'на уровне';
+  const rhrDiffColor = rhrDiff>5?'var(--red)':rhrDiff>2?'var(--yellow)':'var(--green)';
+
+  let sleepStatus='', sleepColor='var(--muted2)';
+  if(sleepH>=8){sleepStatus='отлично';sleepColor='var(--green)';}
+  else if(sleepH>=7){sleepStatus='норма';sleepColor='var(--green)';}
+  else if(sleepH>=6){sleepStatus='мало';sleepColor='var(--yellow)';}
+  else if(sleepH>0){sleepStatus='плохо';sleepColor='var(--red)';}
+
+  let hrvStatus='', hrvStatusColor='var(--muted2)';
+  if(hrv>0&&hrvBase){
+    if(hrv<hrvBase*0.88){hrvStatus='ниже нормы';hrvStatusColor='var(--red)';}
+    else if(hrv>hrvBase*1.08){hrvStatus='выше нормы';hrvStatusColor='var(--green)';}
+    else{hrvStatus='в норме';hrvStatusColor='var(--green)';}
+  }
+
+  html += '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:10px">'
+    +'<div class="card" style="text-align:center;padding:12px 6px">'
+    +'<div style="font-size:10px;color:var(--muted2);margin-bottom:3px">💜 HRV</div>'
+    +'<div style="font-size:24px;font-weight:800;color:#a855f7;line-height:1">'+(hrv||'—')+'</div>'
+    +(hrvBase?'<div style="font-size:9px;color:var(--muted2);margin-top:3px">baseline '+hrvBase+'</div>':'')
+    +(hrvStatus?'<div style="font-size:9px;color:'+hrvStatusColor+';font-weight:600;margin-top:2px">'+hrvStatus+'</div>':'')
+    +'</div>'
+    +'<div class="card" style="text-align:center;padding:12px 6px">'
+    +'<div style="font-size:10px;color:var(--muted2);margin-bottom:3px">❤️ Пульс покоя</div>'
+    +'<div style="font-size:24px;font-weight:800;color:var(--red);line-height:1">'+(rhr||'—')+'</div>'
+    +(rhrBase&&rhrDiff!==0?'<div style="font-size:9px;color:'+rhrDiffColor+';margin-top:3px">'+rhrDiffTxt+' baseline</div>':'<div style="font-size:9px;color:var(--muted2);margin-top:3px">'+(rhrBase?'baseline '+rhrBase:'уд/мин')+'</div>')
+    +'</div>'
+    +'<div class="card" style="text-align:center;padding:12px 6px">'
+    +'<div style="font-size:10px;color:var(--muted2);margin-bottom:3px">😴 Сон</div>'
+    +'<div style="font-size:24px;font-weight:800;color:var(--blue);line-height:1">'+(sleepH||'—')+'</div>'
+    +(sleepH?'<div style="font-size:9px;color:var(--muted2);margin-top:3px">часов</div>':'')
+    +(sleepStatus?'<div style="font-size:9px;color:'+sleepColor+';font-weight:600;margin-top:2px">'+sleepStatus+'</div>':'')
+    +'</div></div>';
+
+  // 3. FATIGUE
   html += '<div class="card" style="margin-bottom:10px">'
-    + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">'
-    + '<div style="font-size:13px;font-weight:700">🔥 Усталость</div>'
-    + '<div style="font-size:11px;color:'+fatigueColor+';font-weight:700;text-transform:uppercase;letter-spacing:.5px">'+fatigueLabel+'</div>'
-    + '</div>'
-    + '<div style="background:rgba(255,255,255,0.07);border-radius:6px;height:7px;overflow:hidden;margin-bottom:8px">'
-    + '<div style="background:'+fatigueColor+';height:100%;width:'+fatiguePct+'%;border-radius:6px;transition:width 1s ease"></div>'
-    + '</div>'
-    + '<div style="display:flex;justify-content:space-between">'
-    + '<div style="font-size:12px;color:var(--muted2)">'+consec+' '+(consec===1?'день':consec<5?'дня':'дней')+' подряд</div>'
-    + '<div style="font-size:11px;color:var(--muted2)">последние 7 дней</div>'
-    + '</div>'
-    + '<div style="font-size:11px;color:var(--muted2);margin-top:6px">'
-    + (fatigueLabel==='высокая'?'⚠️ Накопление нагрузки — рекомендуется отдых':fatigueLabel==='средняя'?'💛 Умеренная усталость — следи за сном':'✅ Нагрузка в норме')
-    + '</div></div>';
+    +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">'
+    +'<div style="font-size:13px;font-weight:700">🔥 Усталость</div>'
+    +'<div style="font-size:11px;color:'+fatigueColor+';font-weight:700;text-transform:uppercase;letter-spacing:.5px">'+fatigueLabel+'</div>'
+    +'</div>'
+    +'<div style="background:rgba(255,255,255,0.07);border-radius:6px;height:7px;overflow:hidden;margin-bottom:8px">'
+    +'<div style="background:'+fatigueColor+';height:100%;width:'+fatiguePct+'%;border-radius:6px;transition:width 1s ease"></div>'
+    +'</div>'
+    +'<div style="display:flex;justify-content:space-between">'
+    +'<div style="font-size:12px;color:var(--muted2)">'+consec+' '+(consec===1?'день':consec<5?'дня':'дней')+' подряд</div>'
+    +'<div style="font-size:11px;color:var(--muted2)">последние 7 дней</div>'
+    +'</div>'
+    +'<div style="font-size:11px;color:var(--muted2);margin-top:6px">'
+    +(fatigueLabel==='высокая'?'⚠️ Накопление нагрузки — рекомендуется отдых':fatigueLabel==='средняя'?'💛 Умеренная усталость — контролируй интенсивность':'✅ Нагрузка в норме — можно тренироваться')
+    +'</div></div>';
 
-  // 4. Training load
+  // 4. TRAINING LOAD
+  const loadStatus = loadChg>20?'⚠️ рост нагрузки':loadChg>10?'умеренный рост':loadChg<-10?'снижение нагрузки':'✅ безопасный диапазон';
+  const loadColor  = loadChg>20?'var(--red)':loadChg>10?'var(--yellow)':'var(--green)';
   html += '<div class="card" style="margin-bottom:10px">'
-    + '<div style="font-size:13px;font-weight:700;margin-bottom:10px">📈 Training Load</div>'
-    + '<div style="display:flex;justify-content:space-between;align-items:center">'
-    + '<div><div style="font-size:11px;color:var(--muted2)">последние 7 дней</div>'
-    + '<div style="font-size:22px;font-weight:800;color:'+loadColor+';margin-top:2px">'+consec+' дн.</div>'
-    + '<div style="font-size:11px;color:'+loadColor+';font-weight:600;margin-top:2px">'+loadStatus+'</div></div>'
-    + '<div style="display:flex;align-items:flex-end;gap:3px;height:40px">';
-  [1,1,2,2,consec>0?consec:1].forEach(function(v){
-    const h=Math.max(4,v*8);
-    const c=v>=4?'var(--red)':v>=2?'var(--yellow)':'var(--green)';
-    html+='<div style="width:10px;height:'+h+'px;background:'+c+';border-radius:3px 3px 2px 2px;opacity:.7"></div>';
-  });
-  html += '</div></div></div>';
+    +'<div style="font-size:13px;font-weight:700;margin-bottom:10px">📈 Training Load</div>'
+    +'<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:8px">'
+    +'<div style="text-align:center"><div style="font-size:10px;color:var(--muted2);margin-bottom:3px">7 дней</div>'
+    +'<div style="font-size:18px;font-weight:800;color:white">'+load7d+'</div>'
+    +'<div style="font-size:9px;color:var(--muted2)">мин</div></div>'
+    +'<div style="text-align:center"><div style="font-size:10px;color:var(--muted2);margin-bottom:3px">пред. 7 дн.</div>'
+    +'<div style="font-size:18px;font-weight:800;color:var(--muted2)">'+loadPrev+'</div>'
+    +'<div style="font-size:9px;color:var(--muted2)">мин</div></div>'
+    +'<div style="text-align:center"><div style="font-size:10px;color:var(--muted2);margin-bottom:3px">изменение</div>'
+    +'<div style="font-size:18px;font-weight:800;color:'+loadColor+'">'+(loadChg>0?'+':'')+loadChg+'%</div>'
+    +'<div style="font-size:9px;color:var(--muted2)">рост</div></div>'
+    +'</div>'
+    +'<div style="font-size:12px;color:'+loadColor+';font-weight:600">'+loadStatus+'</div>'
+    +'</div>';
 
-  // 5. Injury risk
-  let injuryReasonsHtml = injuryReasons.length>0
-    ? '<div style="margin-top:8px">'+injuryReasons.map(function(r){return '<div style="font-size:11px;color:var(--muted2);line-height:1.8">+ '+r+'</div>';}).join('')+'</div>'
-    : '<div style="font-size:11px;color:var(--muted2);margin-top:6px">нет факторов риска</div>';
+  // 5. INJURY RISK
+  let injReasonsHtml = injuryReasons.length>0
+    ? injuryReasons.map(function(r){return '<div style="font-size:11px;color:var(--muted2);line-height:1.9">+ '+r+'</div>';}).join('')
+    : '<div style="font-size:11px;color:var(--muted2)">нет факторов риска</div>';
   const injuryBg = injuryRisk==='High'?'rgba(239,68,68,0.07)':injuryRisk==='Medium'?'rgba(251,191,36,0.07)':'rgba(61,219,103,0.05)';
   html += '<div class="card" style="margin-bottom:10px;background:'+injuryBg+'">'
-    + '<div style="display:flex;justify-content:space-between;align-items:flex-start">'
-    + '<div><div style="font-size:13px;font-weight:700;margin-bottom:6px">🦴 Injury Risk</div>'
-    + '<div style="font-size:22px;font-weight:800;color:'+injuryColor+'">'+injuryRisk+'</div>'
-    + injuryReasonsHtml+'</div>'
-    + '<button onclick="openPainCheck()" style="background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.12);border-radius:10px;padding:8px 12px;color:white;font-size:11px;cursor:pointer;flex-shrink:0">🩺 Body Check</button>'
-    + '</div></div>';
+    +'<div style="display:flex;justify-content:space-between;align-items:flex-start">'
+    +'<div><div style="font-size:13px;font-weight:700;margin-bottom:6px">🦴 Injury Risk</div>'
+    +'<div style="font-size:22px;font-weight:800;color:'+injuryColor+';margin-bottom:6px">'+injuryRisk+'</div>'
+    +injReasonsHtml+'</div>'
+    +'<button onclick="openPainCheck()" style="background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.12);border-radius:10px;padding:8px 12px;color:white;font-size:11px;cursor:pointer;flex-shrink:0;white-space:nowrap">🩺 Body Check</button>'
+    +'</div></div>';
 
-  // 6. Pain check modal
-  const painFields=[['knee','Колено 🦵'],['calf','Икра'],['quad','Квадрицепс'],['achilles','Ахилл'],['lower_back','Поясница'],['shoulder','Плечо']];
-  let painFieldsHtml = '';
+  // PAIN CHECK MODAL
+  const painFields=[['knee','Колено 🦵'],['calf','Икра 🦵'],['quad','Квадрицепс'],['achilles','Ахилл'],['lower_back','Поясница'],['shoulder','Плечо']];
+  let painFieldsHtml='';
   painFields.forEach(function(pair){
     const k=pair[0], label=pair[1];
     const val=savedPain[k]||0;
+    const histCount = painHist[k]||0;
     let btns='';
     [0,1,2,3].forEach(function(n){
       const active=val===n;
@@ -2959,74 +2970,114 @@ async function loadRecoveryScreen(){
       btns+='<button onclick="setPain(\''+k+'\','+n+')" id="pain-btn-'+k+'-'+n+'" style="flex:1;padding:8px;border-radius:8px;border:'+border+';background:'+bg+';color:white;font-size:13px;font-weight:700;cursor:pointer">'+n+'</button>';
     });
     const valColor=val===0?'var(--green)':val===1?'var(--yellow)':'var(--red)';
+    const histHtml = histCount>0 ? '<span style="font-size:10px;color:var(--yellow);margin-left:6px">'+histCount+'× за 14 дней</span>' : '';
     painFieldsHtml+='<div style="margin-bottom:14px">'
-      +'<div style="display:flex;justify-content:space-between;margin-bottom:6px">'
-      +'<span style="font-size:13px">'+label+'</span>'
+      +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">'
+      +'<span style="font-size:13px">'+label+histHtml+'</span>'
       +'<span id="pain-val-'+k+'" style="font-size:13px;font-weight:700;color:'+valColor+'">'+val+'</span>'
       +'</div><div style="display:flex;gap:8px">'+btns+'</div></div>';
   });
   html += '<div id="pain-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:9999;padding:20px;overflow-y:auto" onclick="if(event.target===this)closePainCheck()">'
-    + '<div style="background:#1a1a1a;border:1px solid rgba(255,255,255,0.1);border-radius:20px;padding:20px;max-width:380px;margin:40px auto">'
-    + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">'
-    + '<div style="font-size:16px;font-weight:700">🩺 Body Check</div>'
-    + '<button onclick="closePainCheck()" style="background:none;border:none;color:var(--muted2);font-size:22px;cursor:pointer;line-height:1">×</button>'
-    + '</div>'
-    + '<div style="font-size:12px;color:var(--muted2);margin-bottom:16px">Оцени уровень боли/дискомфорта (0 = нет, 3 = сильно)</div>'
-    + painFieldsHtml
-    + '<button onclick="savePainCheck()" style="width:100%;padding:12px;background:var(--green);border:none;border-radius:12px;color:#000;font-size:14px;font-weight:700;cursor:pointer;margin-top:4px">Сохранить</button>'
-    + '</div></div>';
+    +'<div style="background:#1a1a1a;border:1px solid rgba(255,255,255,0.1);border-radius:20px;padding:20px;max-width:380px;margin:40px auto">'
+    +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">'
+    +'<div style="font-size:16px;font-weight:700">🩺 Body Check</div>'
+    +'<button onclick="closePainCheck()" style="background:none;border:none;color:var(--muted2);font-size:22px;cursor:pointer;line-height:1">×</button>'
+    +'</div>'
+    +'<div style="font-size:12px;color:var(--muted2);margin-bottom:16px">Оцени уровень боли/дискомфорта (0 = нет, 3 = сильно)</div>'
+    +painFieldsHtml
+    +'<button onclick="savePainCheck()" style="width:100%;padding:12px;background:var(--green);border:none;border-radius:12px;color:#000;font-size:14px;font-weight:700;cursor:pointer;margin-top:4px">Сохранить</button>'
+    +'</div></div>';
 
-  // Nutrition warning
-  if(nutGap>30){
+  // NUTRITION
+  if(nutGap>20){
+    const meals = Math.ceil(nutGap/35);
+    const perMeal = Math.round(nutGap/meals);
     html += '<div class="card" style="margin-bottom:10px;border:1px solid rgba(255,107,43,0.2);background:rgba(255,107,43,0.06)">'
-      + '<div style="display:flex;justify-content:space-between;align-items:center">'
-      + '<div><div style="font-size:13px;font-weight:700;margin-bottom:4px">🥩 Белка не хватает '+nutGap+'г</div>'
-      + '<div style="font-size:11px;color:var(--muted2)">Добавь творог, яйца или куриную грудку</div></div>'
-      + '<button onclick="switchScreen(\'nutrition\')" style="background:var(--orange);border:none;border-radius:10px;padding:8px 12px;color:white;font-size:11px;font-weight:700;cursor:pointer;flex-shrink:0">+ Добавить</button>'
-      + '</div></div>';
+      +'<div style="display:flex;justify-content:space-between;align-items:flex-start">'
+      +'<div><div style="font-size:13px;font-weight:700;margin-bottom:4px">🥩 Белка не хватает '+nutGap+'г</div>'
+      +'<div style="font-size:11px;color:var(--muted2)">≈ '+meals+' приёма пищи · '+perMeal+'г за приём</div>'
+      +'<div style="font-size:11px;color:var(--muted2);margin-top:2px">творог, яйца, курица, протеин</div></div>'
+      +'<button onclick="switchScreen(\'nutrition\')" style="background:var(--orange);border:none;border-radius:10px;padding:8px 12px;color:white;font-size:11px;font-weight:700;cursor:pointer;flex-shrink:0">+ Добавить</button>'
+      +'</div></div>';
   }
 
-  // 8. Dynamic advice
+  // WATER
+  if(waterLeft>500){
+    const pct = Math.round(waterToday/waterGoal*100);
+    html += '<div class="card" style="margin-bottom:10px;border:1px solid rgba(61,139,255,0.2);background:rgba(61,139,255,0.05)">'
+      +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">'
+      +'<div style="font-size:13px;font-weight:700">💧 Гидратация ниже нормы</div>'
+      +'<div style="font-size:12px;color:var(--blue);font-weight:600">'+waterToday+'/ '+waterGoal+'мл</div>'
+      +'</div>'
+      +'<div style="background:rgba(255,255,255,0.07);border-radius:6px;height:6px;overflow:hidden">'
+      +'<div style="background:var(--blue);height:100%;width:'+pct+'%;border-radius:6px"></div>'
+      +'</div>'
+      +'<div style="font-size:11px;color:var(--muted2);margin-top:6px">Выпить ещё '+waterLeft+'мл для нормального восстановления</div>'
+      +'</div>';
+  }
+
+  // 8. DYNAMIC ADVICE
+  const adviceList=[];
+  if(nutGap>30) adviceList.push('добрать '+nutGap+'г белка (≈'+Math.round(nutGap/3)+'г × 3 приёма)');
+  if(waterLeft>500) adviceList.push('выпить ещё '+waterLeft+'мл воды');
+  if(hrv>0&&hrvAvg>0&&hrv<hrvAvg*0.9) adviceList.push('снизь интенсивность — HRV ниже нормы');
+  if(sleepH>0&&sleepH<7) adviceList.push('ложись на 30–45 мин раньше сегодня');
+  if(consec>=3) adviceList.push('лёгкая растяжка 10–15 мин после тренировки');
+  if(adviceList.length===0) adviceList.push('отличный день — можно тренироваться в полную силу');
   let advHtml='';
-  adviceList.forEach(function(a){ advHtml+='<div style="font-size:12px;color:var(--muted2);line-height:2">• '+a+'</div>'; });
+  adviceList.forEach(function(a){ advHtml+='<div style="font-size:12px;color:var(--muted2);line-height:2;padding:2px 0">• '+a+'</div>'; });
   html += '<div class="card" style="margin-bottom:10px">'
-    + '<div style="font-size:13px;font-weight:700;margin-bottom:10px">💡 Сегодня</div>'
-    + advHtml+'</div>';
+    +'<div style="font-size:13px;font-weight:700;margin-bottom:8px">💡 Сегодня</div>'
+    +advHtml+'</div>';
 
-  // 9. Protocol
+  // 9. RECOVERY PROTOCOL (dynamic)
   let protoHtml='';
-  protocol.forEach(function(p){ protoHtml+='<div style="background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:10px;padding:6px 12px;font-size:12px">'+p+'</div>'; });
+  protocol.forEach(function(p){
+    protoHtml+='<div style="display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid rgba(255,255,255,0.04)">'
+      +'<span style="font-size:16px">'+p.icon+'</span>'
+      +'<span style="font-size:12px;color:var(--muted2)">'+p.text+'</span>'
+      +'</div>';
+  });
   html += '<div class="card" style="margin-bottom:10px">'
-    + '<div style="font-size:13px;font-weight:700;margin-bottom:10px">🔄 Recovery Protocol</div>'
-    + '<div style="display:flex;flex-wrap:wrap;gap:8px">'+protoHtml+'</div></div>';
+    +'<div style="font-size:13px;font-weight:700;margin-bottom:8px">🔄 Recovery Protocol</div>'
+    +protoHtml+'</div>';
 
-  // 10. Can / avoid
+  // 10. CAN / AVOID with HR zones
   let canHtml='', avoidHtml='';
   canDo.forEach(function(t){ canHtml+='<div style="font-size:11px;color:var(--muted2);line-height:1.9">• '+t+'</div>'; });
   avoid.forEach(function(t){ avoidHtml+='<div style="font-size:11px;color:var(--muted2);line-height:1.9">• '+t+'</div>'; });
   html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">'
-    + '<div class="card" style="background:rgba(61,219,103,0.05);border:1px solid rgba(61,219,103,0.15)">'
-    + '<div style="font-size:12px;font-weight:700;color:var(--green);margin-bottom:8px">✅ Сегодня можно</div>'+canHtml+'</div>'
-    + '<div class="card" style="background:rgba(239,68,68,0.05);border:1px solid rgba(239,68,68,0.12)">'
-    + '<div style="font-size:12px;font-weight:700;color:var(--red);margin-bottom:8px">⛔ Не стоит</div>'+avoidHtml+'</div>'
-    + '</div>';
+    +'<div class="card" style="background:rgba(61,219,103,0.05);border:1px solid rgba(61,219,103,0.15)">'
+    +'<div style="font-size:12px;font-weight:700;color:var(--green);margin-bottom:8px">✅ Сегодня можно</div>'+canHtml+'</div>'
+    +'<div class="card" style="background:rgba(239,68,68,0.05);border:1px solid rgba(239,68,68,0.12)">'
+    +'<div style="font-size:12px;font-weight:700;color:var(--red);margin-bottom:8px">⛔ Не стоит</div>'+avoidHtml+'</div>'
+    +'</div>';
 
-  // 12. Trend
-  if(trendDots.length>0){
-    const maxT=Math.max.apply(null,trendDots.concat([1]));
+  // 11. IMPACT PREDICTION
+  html += '<div class="card" style="margin-bottom:10px;background:rgba(139,92,246,0.06);border:1px solid rgba(139,92,246,0.15)">'
+    +'<div style="font-size:13px;font-weight:700;margin-bottom:6px">🔮 Recovery Impact</div>'
+    +'<div style="font-size:12px;color:var(--muted2);line-height:1.7">'+impactText+'</div>'
+    +'</div>';
+
+  // 12. RECOVERY TREND
+  if(trend.length>0){
+    const scores=trend.map(function(t){return t.score;});
+    const maxS=Math.max.apply(null,scores.concat([1]));
     let barsHtml='';
-    trendDots.forEach(function(v){
-      const h=Math.round((v/maxT)*44)+6;
-      const c=v>=70?'var(--green)':v>=50?'var(--yellow)':'var(--orange)';
+    trend.forEach(function(t){
+      const h=Math.round((t.score/maxS)*44)+6;
+      const c=t.score>=70?'var(--green)':t.score>=50?'var(--yellow)':'var(--orange)';
+      const d=t.date?t.date.slice(5):'';//MM-DD
       barsHtml+='<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:3px">'
-        +'<div style="font-size:8px;color:var(--muted2)">'+v+'</div>'
-        +'<div style="width:100%;height:'+h+'px;background:'+c+';border-radius:4px 4px 2px 2px;opacity:.8"></div>'
+        +'<div style="font-size:9px;color:var(--muted2)">'+t.score+'</div>'
+        +'<div style="width:100%;height:'+h+'px;background:'+c+';border-radius:4px 4px 2px 2px;opacity:.85"></div>'
+        +'<div style="font-size:8px;color:var(--muted2)">'+d+'</div>'
         +'</div>';
     });
     html += '<div class="card" style="margin-bottom:10px">'
-      + '<div style="font-size:13px;font-weight:700;margin-bottom:12px">📊 Recovery последние 7 дней</div>'
-      + '<div style="display:flex;align-items:flex-end;gap:6px;height:60px">'+barsHtml+'</div>'
-      + '</div>';
+      +'<div style="font-size:13px;font-weight:700;margin-bottom:12px">📊 Recovery — последние 7 дней</div>'
+      +'<div style="display:flex;align-items:flex-end;gap:6px;height:70px">'+barsHtml+'</div>'
+      +'</div>';
   }
 
   el.innerHTML = html;
@@ -3048,6 +3099,8 @@ async function loadRecoveryScreen(){
     if(valEl){ valEl.textContent=val; valEl.style.color=val===0?'var(--green)':val===1?'var(--yellow)':'var(--red)'; }
   };
   window.savePainCheck = function(){
+    const pain=JSON.parse(localStorage.getItem('pain_check')||'{}');
+    try{ post('/api/health/pain-log',{pain:pain}); }catch(e){}
     closePainCheck();
     toast('Body Check сохранён ✅');
     loadRecoveryScreen();

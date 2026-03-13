@@ -301,3 +301,23 @@ def save_pain_checkin(req: dict, user=Depends(get_optional_user), db=Depends(get
         """, (uid, key, str(val)))
     db.commit()
     return {"message": "Saved"}
+
+
+@router.post("/pain-log")
+def save_pain_log(req: dict, user=Depends(get_optional_user), db=Depends(get_db)):
+    """Save body check pain data to pain_log table"""
+    from datetime import date as dt
+    uid = get_uid(user)
+    today = dt.today().isoformat()
+    pain = req.get("pain", {})
+    try:
+        for zone, level in pain.items():
+            if int(level) > 0:
+                db.execute(
+                    "INSERT INTO pain_log (user_id, date, zone, pain_level) VALUES (?,?,?,?)",
+                    (uid, today, zone, int(level))
+                )
+        db.commit()
+    except Exception as e:
+        pass
+    return {"ok": True}

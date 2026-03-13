@@ -59,22 +59,41 @@ def get_uid(user):
     return user["id"] if user else 0  # 0 = guest, no real data
 
 def compute_today_score(sleep_h, hrv, rhr, fatigue_pct):
-    """Compute 0-100 readiness score"""
-    score = 50  # baseline
-    # Sleep: 8h = perfect
+    """Compute 0-100 readiness score, return score + breakdown"""
+    breakdown = {}
+    base = 50
+
+    # Sleep: max +20 pts
+    sleep_pts = 0
     if sleep_h:
         s = min(sleep_h / 8.0, 1.2)
-        score += (s - 0.625) * 24
-    # HRV: higher = better (normalize around 60ms)
+        sleep_pts = round((s - 0.625) * 24)
+        sleep_pts = max(-15, min(20, sleep_pts))
+    breakdown["sleep"] = sleep_pts
+
+    # HRV: max +15 pts
+    hrv_pts = 0
     if hrv:
-        score += min((hrv - 40) / 2, 15)
-    # RHR: lower = better (normalize around 55)
+        hrv_pts = round(min((hrv - 40) / 2, 15))
+        hrv_pts = max(-10, hrv_pts)
+    breakdown["hrv"] = hrv_pts
+
+    # RHR: max +12 pts
+    rhr_pts = 0
     if rhr:
-        score += min((60 - rhr) / 2, 12)
-    # Fatigue: lower = better
+        rhr_pts = round(min((60 - rhr) / 2, 12))
+        rhr_pts = max(-10, rhr_pts)
+    breakdown["rhr"] = rhr_pts
+
+    # Fatigue: max -16 pts
+    fatigue_pts = 0
     if fatigue_pct is not None:
-        score -= fatigue_pct * 0.2
-    return max(10, min(99, round(score)))
+        fatigue_pts = -round(fatigue_pct * 0.2)
+        fatigue_pts = max(-16, fatigue_pts)
+    breakdown["fatigue"] = fatigue_pts
+
+    score = base + sleep_pts + hrv_pts + rhr_pts + fatigue_pts
+    return max(10, min(99, round(score))), breakdown
 
 def score_label(score):
     if score >= 85: return "Отличная готовность", "green"
@@ -159,8 +178,57 @@ def get_command_center(user=Depends(get_optional_user), db=Depends(get_db)):
     hrv_avg = hrv_trend["avg_hrv"] if hrv_trend else None
 
     # --- Today Score ---
-    score = compute_today_score(sleep_h, hrv, rhr, fatigue_pct)
+    score, score_breakdown = compute_today_score(sleep_h, hrv, rhr, fatigue_pct)
     label, color = score_label(score)
+
+    # --- Training load: current 7d vs previous 7d (sum of duration_min) ---
+    load_7d = db.execute("""
+        SELECT COALESCE(SUM(duration_min),0) as total FROM workouts
+        WHERE user_id=? AND date >= date('now','-7 days') AND date <= ?
+    """, (uid, today)).fetchone()["total"] or 0
+
+    load_prev7d = db.execute("""
+        SELECT COALESCE(SUM(duration_min),0) as total FROM workouts
+        WHERE user_id=? AND date >= date('now','-14 days') AND date < date('now','-7 days')
+    """, (uid,)).fetchone()["total"] or 0
+
+    load_change_pct = 0
+    if load_prev7d > 0:
+        load_change_pct = round((load_7d - load_prev7d) / load_prev7d * 100)
+    elif load_7d > 0:
+        load_change_pct = 100
+
+    # --- Recovery trend: last 7 days scores ---
+    recovery_trend = []
+    for i in range(6, -1, -1):
+        d = (date.today() - timedelta(days=i)).isoformat()
+        h_row = db.execute("SELECT * FROM health_metrics WHERE user_id=? AND date=?", (uid, d)).fetchone()
+        h = dict(h_row) if h_row else {}
+        # calc consec for that day
+        day_score, _ = compute_today_score(
+            h.get("sleep_hours"), h.get("hrv"), h.get("resting_hr"), min(i*15, 80) if i > 0 else fatigue_pct
+        )
+        recovery_trend.append({"date": d, "score": day_score})
+
+    # --- Water today ---
+    water_row = db.execute(
+        "SELECT COALESCE(SUM(amount_ml),0) as total FROM water_log WHERE user_id=? AND date=?",
+        (uid, today)
+    ).fetchone()
+    water_today = int(water_row["total"]) if water_row else 0
+    water_goal_ml = int(goals.get("water_target", 2500))
+
+    # --- Pain history (last 14 days count per zone) ---
+    pain_history = {}
+    try:
+        pain_rows = db.execute("""
+            SELECT zone, COUNT(*) as cnt FROM pain_log
+            WHERE user_id=? AND date >= date('now','-14 days') AND pain_level > 0
+            GROUP BY zone
+        """, (uid,)).fetchall()
+        pain_history = {r["zone"]: r["cnt"] for r in pain_rows}
+    except Exception:
+        pass  # table may not exist yet
 
     # --- Nutrition gaps ---
     cal_goal  = int(goals.get("calories_target", 2300))
@@ -205,6 +273,7 @@ def get_command_center(user=Depends(get_optional_user), db=Depends(get_db)):
         "score": score,
         "score_label": label,
         "score_color": color,
+        "score_breakdown": score_breakdown,
         "sleep_h": sleep_h,
         "hrv": hrv,
         "hrv_avg": hrv_avg,
@@ -223,6 +292,13 @@ def get_command_center(user=Depends(get_optional_user), db=Depends(get_db)):
         "alerts": alerts,
         "today_plan": today_plan_item,
         "goals": goals,
+        "training_load_7d": load_7d,
+        "training_load_prev7d": load_prev7d,
+        "training_load_change_pct": load_change_pct,
+        "recovery_trend": recovery_trend,
+        "water_today": water_today,
+        "water_goal": water_goal_ml,
+        "pain_history": pain_history,
     }
 
 @router.get("/weekly")
