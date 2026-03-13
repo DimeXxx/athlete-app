@@ -960,8 +960,13 @@ async function doRegister(){
     TOKEN=r.token; CURRENT_USER=r.user;
     localStorage.setItem('athlete_token',TOKEN);
     localStorage.setItem('athlete_user',JSON.stringify(CURRENT_USER));
+    localStorage.setItem('is_new_user','1');
     toast('Аккаунт создан! Добро пожаловать 🎉');
     showApp();
+    // Show onboarding goal wizard for new users
+    setTimeout(function(){
+      showOnboarding();
+    }, 400);
   }catch(e){toast(e.message,true);}
 }
 
@@ -2767,8 +2772,9 @@ async function loadRecoveryScreen(){
   const loadPrev   = cc.training_load_prev7d||cc.training_load_7d||0;
   const loadChg    = cc.training_load_change_pct||0;
   const trend      = cc.recovery_trend||[];
-  const waterToday = cc.water_today||0;
-  const waterGoal  = cc.water_goal||2500;
+  // Water: read from localStorage (where addWater() saves it)
+  const waterToday = parseInt(localStorage.getItem('water_'+new Date().toDateString())||'0');
+  const waterGoal  = parseInt((cc.goals&&cc.goals.water_target)||cc.water_goal||2500);
   const waterLeft  = Math.max(0, waterGoal - waterToday);
   const painHist   = cc.pain_history||{};
   const savedPain  = JSON.parse(localStorage.getItem('pain_check')||'{}');
@@ -3230,6 +3236,25 @@ async function loadDashboard(){
 
 // ===== SETUP WIZARD =====
 let setupGoal='half', setupLevel='intermediate';
+
+function showOnboarding(){
+  // Show a full-screen welcome overlay before the setup wizard
+  const overlay = document.createElement('div');
+  overlay.id = 'onboarding-overlay';
+  overlay.style.cssText = 'position:fixed;inset:0;background:#060a0e;z-index:10000;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:32px;text-align:center;animation:fadeIn .4s ease';
+  const userName = (CURRENT_USER&&CURRENT_USER.name) ? CURRENT_USER.name.split(' ')[0] : 'спортсмен';
+  overlay.innerHTML = '<div style="font-size:48px;margin-bottom:16px">🏃</div>'
+    +'<div style="font-size:24px;font-weight:800;margin-bottom:8px">Привет, '+userName+'!</div>'
+    +'<div style="font-size:15px;color:var(--muted2);margin-bottom:8px;line-height:1.6">SmartFit будет отслеживать твои тренировки,<br>восстановление и питание.</div>'
+    +'<div style="font-size:15px;color:var(--green);font-weight:600;margin-bottom:32px">Давай выберем твою цель 🎯</div>'
+    +'<button id="onboarding-btn" style="background:linear-gradient(135deg,var(--orange),var(--yellow));border:none;border-radius:16px;padding:16px 40px;color:#060a0e;font-size:16px;font-weight:800;cursor:pointer;width:100%;max-width:320px">Выбрать цель →</button>'
+    +'<div style="font-size:12px;color:var(--muted2);margin-top:16px;cursor:pointer" onclick="document.getElementById(\'onboarding-overlay\').remove()">Пропустить</div>';
+  document.body.appendChild(overlay);
+  document.getElementById('onboarding-btn').onclick = function(){
+    overlay.remove();
+    openSetupWizard();
+  };
+}
 
 function openSetupWizard(){
   ['setup-step-1','setup-step-2','setup-step-3','setup-step-4'].forEach((id,i)=>{
