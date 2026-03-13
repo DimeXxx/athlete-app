@@ -992,6 +992,8 @@ function switchScreen(name){
   if(name==='ai')renderAIScreen();
   if(name==='hub')loadTrainingHub();
   if(name==='profile')loadProfileScreen();
+  if(name==='recovery')loadRecoveryScreen();
+  if(name==='plan')renderPlan();
 }
 
 // ===== TODAY =====
@@ -2738,6 +2740,113 @@ function setDashPeriod(p){
     document.getElementById('dp-'+k)?.classList.toggle('active', k===p);
   });
   loadDashboard();
+}
+
+async function loadRecoveryScreen(){
+  const el = document.getElementById('recovery-screen-content');
+  if(!el) return;
+  el.innerHTML='<div class="loading"><div class="spinner"></div>Загрузка...</div>';
+  let cc={};
+  try{ cc=await get('/api/ai/command-center'); }catch(e){}
+  const score=cc.score||0;
+  const scoreColor=score>=70?'var(--green)':score>=50?'var(--yellow)':'var(--orange)';
+  const scoreLabel=cc.score_label||'Нет данных';
+  const m=cc.metrics||{};
+  const alerts=cc.alerts||[];
+
+  // Consecutive days / fatigue
+  const consec=cc.consec_days||0;
+  const fatiguePct=Math.min(consec*15,80);
+  const fatigueColor=fatiguePct>=60?'var(--red)':fatiguePct>=30?'var(--yellow)':'var(--green)';
+
+  let html=`
+    <div class="screen-title">Recovery</div>
+    <div class="screen-sub">Восстановление и состояние</div>
+
+    <!-- Score ring -->
+    <div style="display:flex;flex-direction:column;align-items:center;padding:20px 0 8px">
+      <svg width="120" height="120" viewBox="0 0 120 120">
+        <circle cx="60" cy="60" r="50" fill="none" stroke="rgba(255,255,255,0.06)" stroke-width="10"/>
+        <circle cx="60" cy="60" r="50" fill="none" stroke="${scoreColor}" stroke-width="10"
+          stroke-dasharray="314" stroke-dashoffset="${314 - 314*score/100}"
+          stroke-linecap="round" transform="rotate(-90 60 60)" style="transition:stroke-dashoffset 1s ease"/>
+        <text x="60" y="56" text-anchor="middle" fill="white" font-size="28" font-weight="800">${score}</text>
+        <text x="60" y="72" text-anchor="middle" fill="rgba(255,255,255,0.5)" font-size="10">${scoreLabel}</text>
+      </svg>
+    </div>
+
+    <!-- Metrics row -->
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:14px">
+      <div class="card" style="text-align:center;padding:12px 6px">
+        <div style="font-size:22px;font-weight:800;color:#a855f7">${m.hrv||'—'}</div>
+        <div style="font-size:10px;color:var(--muted2);margin-top:2px">💜 HRV</div>
+        ${m.hrv&&m.hrv_avg?`<div style="font-size:9px;color:var(--muted2)">норма ${m.hrv_avg}мс</div>`:''}
+      </div>
+      <div class="card" style="text-align:center;padding:12px 6px">
+        <div style="font-size:22px;font-weight:800;color:var(--red)">${m.rhr||'—'}</div>
+        <div style="font-size:10px;color:var(--muted2);margin-top:2px">❤️ ЧСС покоя</div>
+      </div>
+      <div class="card" style="text-align:center;padding:12px 6px">
+        <div style="font-size:22px;font-weight:800;color:var(--blue)">${m.sleep_h||'—'}</div>
+        <div style="font-size:10px;color:var(--muted2);margin-top:2px">😴 Сон (ч)</div>
+      </div>
+    </div>
+
+    <!-- Fatigue bar -->
+    <div class="card" style="margin-bottom:14px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+        <div style="font-size:13px;font-weight:700">🔥 Усталость</div>
+        <div style="font-size:12px;color:${fatigueColor};font-weight:600">${consec} дн. подряд</div>
+      </div>
+      <div style="background:rgba(255,255,255,0.07);border-radius:6px;height:8px;overflow:hidden">
+        <div style="background:${fatigueColor};height:100%;width:${fatiguePct}%;border-radius:6px;transition:width 1s ease"></div>
+      </div>
+      <div style="font-size:11px;color:var(--muted2);margin-top:8px">
+        ${fatiguePct>=60?'⚠️ Высокая нагрузка — рекомендуется отдых или лёгкая тренировка':
+          fatiguePct>=30?'💛 Умеренная усталость — следи за качеством сна':'✅ Хорошее состояние — можно тренироваться в полную силу'}
+      </div>
+    </div>`;
+
+  // Alerts
+  if(alerts.length>0){
+    html+=`<div style="margin-bottom:14px">`;
+    alerts.forEach(a=>{
+      const bg=a.type==='warn'?'rgba(255,165,0,0.08)':a.type==='ok'?'rgba(61,219,103,0.08)':'rgba(61,139,255,0.08)';
+      const border=a.type==='warn'?'rgba(255,165,0,0.2)':a.type==='ok'?'rgba(61,219,103,0.2)':'rgba(61,139,255,0.2)';
+      html+=`<div style="background:${bg};border:1px solid ${border};border-radius:14px;padding:12px 14px;margin-bottom:8px">
+        <div style="font-size:13px;font-weight:700;margin-bottom:3px">${a.icon} ${a.title}</div>
+        <div style="font-size:12px;color:var(--muted2)">${a.text}</div>
+      </div>`;
+    });
+    html+=`</div>`;
+  }
+
+  // Yesterday workout
+  if(cc.yesterday_workout){
+    const yw=cc.yesterday_workout;
+    html+=`<div class="card" style="margin-bottom:14px">
+      <div style="font-size:13px;font-weight:700;margin-bottom:8px">📊 Вчерашняя тренировка</div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap">
+        ${yw.type?`<span style="background:rgba(255,255,255,0.07);border-radius:8px;padding:4px 10px;font-size:12px">${yw.type}</span>`:''}
+        ${yw.distance_km?`<span style="background:rgba(255,255,255,0.07);border-radius:8px;padding:4px 10px;font-size:12px">📍 ${yw.distance_km}км</span>`:''}
+        ${yw.duration_min?`<span style="background:rgba(255,255,255,0.07);border-radius:8px;padding:4px 10px;font-size:12px">⏱ ${yw.duration_min}мин</span>`:''}
+        ${yw.calories?`<span style="background:rgba(255,255,255,0.07);border-radius:8px;padding:4px 10px;font-size:12px">🔥 ${yw.calories}ккал</span>`:''}
+      </div>
+    </div>`;
+  }
+
+  // Tips
+  html+=`<div class="card">
+    <div style="font-size:13px;font-weight:700;margin-bottom:10px">💡 Советы по восстановлению</div>
+    <div style="font-size:12px;color:var(--muted2);line-height:1.9">
+      <div>• Спи 7–9 часов для оптимального восстановления</div>
+      <div>• Ешь белок в течение 30 минут после тренировки</div>
+      <div>• Пей воду — минимум 30мл на кг веса тела</div>
+      <div>• HRV ниже нормы → снизь интенсивность</div>
+    </div>
+  </div>`;
+
+  el.innerHTML=html;
 }
 
 async function loadDashboard(){
