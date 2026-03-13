@@ -254,7 +254,7 @@ function applyTranslations(){
   const navMap = {
     'nav-today':'today','nav-hub':'workouts','nav-ai':'ai',
     'nav-goal':'goal','nav-stats':'progress','nav-nutrition':'nutrition',
-    'nav-dash':'summary','nav-plan':'plan','nav-profile':'profile'
+    'nav-dash':'summary','nav-recovery':'recovery','nav-plan':'plan','nav-profile':'profile'
   };
   Object.entries(navMap).forEach(([id, key]) => {
     const btn = document.getElementById(id);
@@ -686,7 +686,7 @@ function toggleTheme(){
   </div>
   <div style="display:flex;width:100%;border-top:1px solid rgba(255,255,255,0.04)">
     <button class="nav-btn" onclick="switchScreen('nutrition')" id="nav-nutrition"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M18 8h1a4 4 0 0 1 0 8h-1"/><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/><line x1="6" y1="1" x2="6" y2="4"/><line x1="10" y1="1" x2="10" y2="4"/><line x1="14" y1="1" x2="14" y2="4"/></svg>Питание</button>
-    <button class="nav-btn" onclick="switchScreen('dash')" id="nav-dash"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="2" y="3" width="20" height="14" rx="2"/><polyline points="7 10 10 7 13 10 17 6"/></svg>Итоги</button>
+    <button class="nav-btn" onclick="switchScreen('recovery')" id="nav-recovery"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>Recovery</button>
     <button class="nav-btn" onclick="switchScreen('plan')" id="nav-plan"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>План</button>
     <button class="nav-btn" onclick="switchScreen('profile')" id="nav-profile"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>Профиль</button>
   </div>
@@ -717,6 +717,12 @@ function toggleTheme(){
 <!-- TRAINING HUB SCREEN -->
 <div class="screen" id="screen-hub">
   <div id="hub-content"><div class="loading"><div class="spinner"></div></div></div>
+</div>
+
+
+<!-- RECOVERY & INJURY RISK SCREEN -->
+<div class="screen" id="screen-recovery">
+  <div id="recovery-screen-content"><div class="loading"><div class="spinner"></div>Загрузка...</div></div>
 </div>
 
 <!-- DASHBOARD SCREEN -->
@@ -1746,6 +1752,7 @@ function setTab(name){
   if(name==='swim')loadSwimStats();
   if(name==='run'){loadRunStats();loadHistory();}
   if(name==='garmin')loadGarminStatus();
+  if(name==='recovery')loadRecoveryScreen();
   if(name==='strava')loadStravaStatus();
   if(name==='steps')loadSteps();
 }

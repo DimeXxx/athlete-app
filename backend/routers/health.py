@@ -203,3 +203,101 @@ def get_dashboard(period: str = "week", user=Depends(get_optional_user), db=Depe
         "chart": [dict(r) for r in chart],
         "goals": goals,
     }
+
+
+@router.get("/recovery")
+def get_recovery_data(user=Depends(get_optional_user), db=Depends(get_db)):
+    """Full recovery & injury risk data"""
+    uid = get_uid(user)
+    from datetime import date, timedelta
+    today = date.today()
+
+    # Health metrics last 14 days
+    metrics = db.execute("""
+        SELECT date, hrv, sleep_hours, resting_hr, steps, weight_kg
+        FROM health_metrics WHERE user_id=? AND date >= ?
+        ORDER BY date DESC
+    """, (uid, str(today - timedelta(days=14)))).fetchall()
+    metrics = [dict(m) for m in metrics]
+
+    # Workouts last 14 days
+    workouts = db.execute("""
+        SELECT date, type, duration_min, distance_km, calories, avg_hr, avg_pace
+        FROM workouts WHERE user_id=? AND date >= ?
+        ORDER BY date DESC
+    """, (uid, str(today - timedelta(days=14)))).fetchall()
+    workouts = [dict(w) for w in workouts]
+
+    # Pain checkins
+    pain_rows = db.execute("""
+        SELECT key, value, created_at FROM goals
+        WHERE user_id=? AND key LIKE 'pain_%'
+    """, (uid,)).fetchall()
+    pain_data = [dict(p) for p in pain_rows]
+
+    # Evening checkins
+    checkin_rows = db.execute("""
+        SELECT key, value FROM goals
+        WHERE user_id=? AND key LIKE 'checkin_%'
+        ORDER BY key DESC LIMIT 20
+    """, (uid,)).fetchall()
+    checkins = [dict(c) for c in checkin_rows]
+
+    # Calculate load this week vs last week
+    this_week_start = str(today - timedelta(days=7))
+    last_week_start = str(today - timedelta(days=14))
+
+    load_this = sum(w.get('duration_min',0) or 0 for w in workouts if w['date'] >= this_week_start)
+    load_last = sum(w.get('duration_min',0) or 0 for w in workouts if w['date'] < this_week_start)
+
+    load_change_pct = round((load_this - load_last) / max(load_last, 1) * 100) if load_last > 0 else 0
+
+    # Latest health
+    latest = metrics[0] if metrics else {}
+    hrv = latest.get('hrv')
+    sleep = latest.get('sleep_hours')
+    rhr = latest.get('resting_hr')
+
+    # HRV baseline (avg last 7 days)
+    recent_hrv = [m['hrv'] for m in metrics[:7] if m.get('hrv')]
+    hrv_baseline = round(sum(recent_hrv)/len(recent_hrv)) if recent_hrv else None
+
+    # Pain zones from goals
+    pain_zones = {}
+    for p in pain_data:
+        zone = p['key'].replace('pain_','')
+        pain_zones[zone] = int(p.get('value', 0) or 0)
+
+    return {
+        "load_this_week": load_this,
+        "load_last_week": load_last,
+        "load_change_pct": load_change_pct,
+        "hrv": hrv,
+        "hrv_baseline": hrv_baseline,
+        "sleep": sleep,
+        "rhr": rhr,
+        "pain_zones": pain_zones,
+        "metrics": metrics[:7],
+        "workouts": workouts[:10],
+        "checkins": checkins[:5],
+    }
+
+
+@router.post("/pain-checkin")
+def save_pain_checkin(req: dict, user=Depends(get_optional_user), db=Depends(get_db)):
+    uid = get_uid(user)
+    for zone, val in req.get('pain', {}).items():
+        key = f"pain_{zone}"
+        db.execute("""
+            INSERT INTO goals (user_id, key, value) VALUES (?,?,?)
+            ON CONFLICT(user_id,key) DO UPDATE SET value=excluded.value
+        """, (uid, key, str(val)))
+    for field, val in req.get('checkin', {}).items():
+        from datetime import date
+        key = f"checkin_{date.today()}_{field}"
+        db.execute("""
+            INSERT INTO goals (user_id, key, value) VALUES (?,?,?)
+            ON CONFLICT(user_id,key) DO UPDATE SET value=excluded.value
+        """, (uid, key, str(val)))
+    db.commit()
+    return {"message": "Saved"}
