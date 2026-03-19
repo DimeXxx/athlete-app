@@ -198,7 +198,7 @@ def sync_health_metrics(uid: int, client, days: int, db):
 
 
 def do_sync(uid: int, email: str, password: str, days: int, db):
-    client = get_garmin_client(email, password)
+    client = get_garmin_client(email, password, uid=uid)
     synced = skipped = 0
     end_date = date.today()
     start_date = end_date - timedelta(days=days)
@@ -259,7 +259,7 @@ def debug_health(user=Depends(get_optional_user), db=Depends(get_db)):
     saved = load_garmin_creds(uid, db)
     if not saved:
         raise HTTPException(400, "Garmin не подключён")
-    client = get_garmin_client(saved["email"], saved["password"])
+    client = get_garmin_client(saved["email"], saved["password"], uid=uid)
     results = {}
     for d in [date.today().isoformat(), (date.today()-timedelta(days=1)).isoformat()]:
         try:
@@ -432,11 +432,7 @@ def sync_steps_only(creds: Optional[GarminCredentials] = None, days: int = 90,
     else:
         email, password = creds.email, creds.password
 
-    client = get_garmin_client(email, password)
-    end_date = date.today()
-    start_date = end_date - timedelta(days=days)
-    steps_synced = 0
-    errors = []
+    client = get_garmin_client(email, password, uid=uid)
 
     try:
         from datetime import timedelta as _td
