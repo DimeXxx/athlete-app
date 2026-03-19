@@ -3111,6 +3111,25 @@ async function loadRecoveryScreen(){
     impactText='Тренировка сегодня ухудшит восстановление на 1–2 дня. Лучше активный отдых.';
   }
 
+  // ---- Score summary phrases ----
+  const reasons=[];
+  if(hrv>0&&hrvAvg>0){
+    if(hrv<hrvAvg*0.88) reasons.push({txt:'HRV значительно ниже нормы',bad:true});
+    else if(hrv<hrvAvg*0.95) reasons.push({txt:'HRV немного ниже нормы',bad:true});
+    else if(hrv>hrvAvg*1.08) reasons.push({txt:'HRV выше нормы — отличный знак',bad:false});
+    else reasons.push({txt:'HRV в норме',bad:false});
+  }
+  if(sleepH>0){
+    if(sleepH<6) reasons.push({txt:'мало сна — '+sleepH+'ч',bad:true});
+    else if(sleepH>=8) reasons.push({txt:'сон отличный — '+sleepH+'ч',bad:false});
+    else if(sleepH>=7) reasons.push({txt:'сон хороший — '+sleepH+'ч',bad:false});
+    else reasons.push({txt:'сон немного короткий — '+sleepH+'ч',bad:true});
+  }
+  if(consec>=5) reasons.push({txt:''+consec+' дней тренировок без отдыха',bad:true});
+  else if(consec>=3) reasons.push({txt:'нагрузка немного выше нормы',bad:true});
+  else if(consec>=1) reasons.push({txt:'нагрузка умеренная',bad:false});
+  else reasons.push({txt:'нагрузка низкая — можно добавить',bad:false});
+
   // ============ BUILD HTML ============
   let html = '<div class="screen-title">Recovery</div><div class="screen-sub">Восстановление и состояние</div>';
 
