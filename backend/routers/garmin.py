@@ -15,15 +15,53 @@ class GarminCredentials(BaseModel):
 
 
 def get_garmin_token_dir(uid: int) -> str:
-    """Per-user token directory"""
-    import tempfile
+    """Per-user token directory — use persistent volume if available, else /tmp"""
     base = os.environ.get("GARMIN_TOKEN_DIR", "/tmp/garmin_tokens")
     path = os.path.join(base, str(uid))
     os.makedirs(path, exist_ok=True)
     return path
 
 
-def get_garmin_client_with_tokens(uid: int, email: str, password: str, mfa_code: str = ""):
+def save_garmin_tokens_to_db(uid: int, token_dir: str, db):
+    """Save garth token files to database for persistence across deploys"""
+    import json as _json
+    tokens = {}
+    for fname in ["oauth1_token.json", "oauth2_token.json"]:
+        fpath = os.path.join(token_dir, fname)
+        if os.path.exists(fpath):
+            with open(fpath) as f:
+                tokens[fname] = f.read()
+    if tokens:
+        try:
+            db.execute("""
+                INSERT INTO goals (user_id, key, value) VALUES (?,?,?)
+                ON CONFLICT(user_id, key) DO UPDATE SET value=excluded.value
+            """, (uid, "garmin_tokens", _json.dumps(tokens)))
+            db.commit()
+        except Exception:
+            pass
+
+
+def load_garmin_tokens_from_db(uid: int, token_dir: str, db):
+    """Restore garth token files from database"""
+    import json as _json
+    try:
+        row = db.execute(
+            "SELECT value FROM goals WHERE user_id=? AND key='garmin_tokens'", (uid,)
+        ).fetchone()
+        if row:
+            tokens = _json.loads(row["value"])
+            os.makedirs(token_dir, exist_ok=True)
+            for fname, content in tokens.items():
+                with open(os.path.join(token_dir, fname), "w") as f:
+                    f.write(content)
+            return True
+    except Exception:
+        pass
+    return False
+
+
+def get_garmin_client_with_tokens(uid: int, email: str, password: str, mfa_code: str = "", db=None):
     """Login with garth token support — handles 2FA properly"""
     try:
         from garminconnect import Garmin
@@ -33,27 +71,34 @@ def get_garmin_client_with_tokens(uid: int, email: str, password: str, mfa_code:
 
     token_dir = get_garmin_token_dir(uid)
 
+    # Restore tokens from DB if not on disk
+    if db:
+        load_garmin_tokens_from_db(uid, token_dir, db)
+
     # Try resuming from saved tokens first
     try:
         client = Garmin(email=email, password=password)
         client.garth.load(token_dir)
         client.garth.client.auth_token.refresh()
-        return client, False  # False = no MFA needed
+        # Re-save to DB to keep fresh
+        if db:
+            save_garmin_tokens_to_db(uid, token_dir, db)
+        return client, False
     except Exception:
         pass  # tokens missing or expired, do fresh login
 
     # Fresh login — may need MFA
     try:
         if mfa_code:
-            # Login with MFA code provided
             client = Garmin(email=email, password=password, prompt_mfa=lambda: mfa_code)
         else:
-            # Attempt login without MFA (works if 2FA not enabled)
             client = Garmin(email=email, password=password)
 
         client.login()
-        # Save tokens for next time
+        # Save tokens to disk and DB
         client.garth.dump(token_dir)
+        if db:
+            save_garmin_tokens_to_db(uid, token_dir, db)
         return client, False
 
     except Exception as e:
@@ -102,10 +147,10 @@ def ensure_garmin_table(db):
     """)
     db.commit()
 
-def get_garmin_client(email: str, password: str, uid: int = 0, token_store: dict = None):
-    """Legacy wrapper — tries token auth first, falls back to password"""
+def get_garmin_client(email: str, password: str, uid: int = 0, db=None):
+    """Wrapper — tries token auth first, falls back to password"""
     try:
-        client, _ = get_garmin_client_with_tokens(uid, email, password)
+        client, _ = get_garmin_client_with_tokens(uid, email, password, db=db)
         return client
     except HTTPException as e:
         if "MFA_REQUIRED" in str(e.detail):
@@ -198,7 +243,7 @@ def sync_health_metrics(uid: int, client, days: int, db):
 
 
 def do_sync(uid: int, email: str, password: str, days: int, db):
-    client = get_garmin_client(email, password, uid=uid)
+    client = get_garmin_client(email, password, uid=uid, db=db)
     synced = skipped = 0
     end_date = date.today()
     start_date = end_date - timedelta(days=days)
@@ -259,7 +304,7 @@ def debug_health(user=Depends(get_optional_user), db=Depends(get_db)):
     saved = load_garmin_creds(uid, db)
     if not saved:
         raise HTTPException(400, "Garmin не подключён")
-    client = get_garmin_client(saved["email"], saved["password"], uid=uid)
+    client = get_garmin_client(saved["email"], saved["password"], uid=uid, db=db)
     results = {}
     for d in [date.today().isoformat(), (date.today()-timedelta(days=1)).isoformat()]:
         try:
@@ -302,7 +347,7 @@ def garmin_connect(creds: GarminCredentials, user=Depends(get_optional_user), db
     ensure_garmin_table(db)
     uid = get_uid(user)
     try:
-        client, _ = get_garmin_client_with_tokens(uid, creds.email, creds.password, creds.mfa_code)
+        client, _ = get_garmin_client_with_tokens(uid, creds.email, creds.password, creds.mfa_code, db=db)
     except HTTPException as e:
         if e.detail == "MFA_REQUIRED":
             # Tell frontend to ask for MFA code
@@ -347,7 +392,7 @@ def garmin_sync(creds: Optional[GarminCredentials] = None, days: int = 0,
     # Sync steps via client
     steps_synced = 0
     try:
-        client = get_garmin_client(email, password, uid=uid)
+        client = get_garmin_client(email, password, uid=uid, db=db)
         from datetime import date as _date2, timedelta as _td
         end_date = _date2.today()
         start_date = end_date - _td(days=min(days, 90))
@@ -413,7 +458,7 @@ def sync_steps_only(creds: Optional[GarminCredentials] = None, days: int = 90,
     else:
         email, password = creds.email, creds.password
 
-    client = get_garmin_client(email, password, uid=uid)
+    client = get_garmin_client(email, password, uid=uid, db=db)
 
     try:
         from datetime import timedelta as _td
