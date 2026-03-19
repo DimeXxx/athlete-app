@@ -332,65 +332,46 @@ def garmin_sync(creds: Optional[GarminCredentials] = None, days: int = 0,
 
     # First sync ever = load 2 years; repeat sync = load 30 days
     if days == 0:
-        existing = db.execute(
-            "SELECT COUNT(*) FROM workouts WHERE user_id=? AND source='garmin'", (uid,)
-        ).fetchone()[0]
-        # Check oldest record - if less than 1 year of data, load 2 years
         oldest = db.execute(
             "SELECT MIN(date) FROM workouts WHERE user_id=? AND source='garmin'", (uid,)
         ).fetchone()[0]
         if not oldest:
-            days = 730  # No data - load 2 years
+            days = 730
         else:
             from datetime import date as _date
-            oldest_date = _date.fromisoformat(oldest)
-            days_of_data = (_date.today() - oldest_date).days
-            days = 730 if days_of_data < 365 else 30  # Less than 1yr? load 2yrs
-
+            days_of_data = (_date.today() - _date.fromisoformat(oldest)).days
+            days = 730 if days_of_data < 365 else 30
 
     synced, skipped, total = do_sync(uid, email, password, days, db)
-    # Sync daily steps — try multiple Garmin API methods
+
+    # Sync steps via client
     steps_synced = 0
     try:
-        steps_data = None
-        # Try different method names (garminconnect API varies by version)
-        for method_name in ['get_steps_data', 'get_daily_steps', 'get_user_summary_chart']:
-            try:
-                method = getattr(client, method_name, None)
-                if method:
-                    steps_data = method(start_date.isoformat(), end_date.isoformat())
-                    if steps_data:
-                        break
-            except Exception:
-                continue
+        client = get_garmin_client(email, password, uid=uid)
+        from datetime import date as _date2, timedelta as _td
+        end_date = _date2.today()
+        start_date = end_date - _td(days=min(days, 90))
 
-        # Also try extracting steps from daily summary
-        if not steps_data:
+        steps_data = []
+        cur = start_date
+        while cur <= end_date:
             try:
-                from datetime import timedelta as _td
-                cur = start_date
-                steps_data = []
-                while cur <= end_date:
-                    try:
-                        summary = client.get_user_summary(cur.isoformat())
-                        s = summary.get("totalSteps") or summary.get("steps")
-                        if s:
-                            steps_data.append({"calendarDate": cur.isoformat(), "totalSteps": s})
-                    except Exception:
-                        pass
-                    cur += _td(days=1)
+                summary = client.get_user_summary(cur.isoformat())
+                s = summary.get("totalSteps") or summary.get("steps")
+                if s and int(s) > 0:
+                    steps_data.append({"calendarDate": cur.isoformat(), "totalSteps": int(s)})
             except Exception:
                 pass
+            cur += _td(days=1)
 
-        for day in (steps_data or []):
+        for day in steps_data:
             day_date = str(day.get("calendarDate", ""))[:10]
-            steps = (day.get("totalSteps") or day.get("steps") or
-                     day.get("totalStep") or day.get("stepGoal"))
-            if day_date and steps and int(steps) > 0:
+            steps = day.get("totalSteps", 0)
+            if day_date and steps:
                 db.execute(
                     "INSERT INTO health_metrics (user_id, date, steps) VALUES (?,?,?) "
                     "ON CONFLICT(user_id, date) DO UPDATE SET steps=COALESCE(excluded.steps,steps)",
-                    (uid, day_date, int(steps))
+                    (uid, day_date, steps)
                 )
                 steps_synced += 1
         if steps_synced:

@@ -1778,7 +1778,10 @@ async function garminSync(){
     document.getElementById('g-result').innerHTML=`<div style="color:var(--green)">✅ ${r.synced} новых · пропущено: ${r.skipped}</div><div style="color:var(--muted);font-size:11px;margin-top:4px">шагов: ${r.steps_synced||0} дней</div>`;
     loadSwimStats();
     switchScreen('stats');setTab('steps');
-  }catch(e){toast('Ошибка синхронизации',true);document.getElementById('g-result').textContent='❌ '+e.message;}
+  }catch(e){
+    toast('Ошибка синхронизации',true);
+    document.getElementById('g-result').innerHTML='<div style="color:var(--red);font-size:12px">❌ '+e.message+'</div>';
+  }
   finally{btn.disabled=false;btn.textContent='🔄 Синхронизировать';}
 }
 
