@@ -11,6 +11,58 @@ router = APIRouter()
 class GarminCredentials(BaseModel):
     email: str
     password: str
+    mfa_code: str = ""  # optional MFA code
+
+
+def get_garmin_token_dir(uid: int) -> str:
+    """Per-user token directory"""
+    import tempfile
+    base = os.environ.get("GARMIN_TOKEN_DIR", "/tmp/garmin_tokens")
+    path = os.path.join(base, str(uid))
+    os.makedirs(path, exist_ok=True)
+    return path
+
+
+def get_garmin_client_with_tokens(uid: int, email: str, password: str, mfa_code: str = ""):
+    """Login with garth token support — handles 2FA properly"""
+    try:
+        from garminconnect import Garmin
+        import garth
+    except ImportError:
+        raise HTTPException(500, "garminconnect not installed")
+
+    token_dir = get_garmin_token_dir(uid)
+
+    # Try resuming from saved tokens first
+    try:
+        client = Garmin(email=email, password=password)
+        client.garth.load(token_dir)
+        client.garth.client.auth_token.refresh()
+        return client, False  # False = no MFA needed
+    except Exception:
+        pass  # tokens missing or expired, do fresh login
+
+    # Fresh login — may need MFA
+    try:
+        if mfa_code:
+            # Login with MFA code provided
+            client = Garmin(email=email, password=password, prompt_mfa=lambda: mfa_code)
+        else:
+            # Attempt login without MFA (works if 2FA not enabled)
+            client = Garmin(email=email, password=password)
+
+        client.login()
+        # Save tokens for next time
+        client.garth.dump(token_dir)
+        return client, False
+
+    except Exception as e:
+        err = str(e).lower()
+        if "mfa" in err or "2fa" in err or "factor" in err or "verification" in err or "code" in err:
+            raise HTTPException(403, "MFA_REQUIRED")
+        if "invalid" in err or "unauthorized" in err or "401" in err or "password" in err or "incorrect" in err:
+            raise HTTPException(401, "Неверный email или пароль Garmin.")
+        raise HTTPException(401, f"Ошибка Garmin: {str(e)}")
 
 def get_uid(user):
     return user["id"] if user else 0  # 0 = guest, no real data
@@ -50,28 +102,15 @@ def ensure_garmin_table(db):
     """)
     db.commit()
 
-def get_garmin_client(email: str, password: str, token_store: dict = None):
+def get_garmin_client(email: str, password: str, uid: int = 0, token_store: dict = None):
+    """Legacy wrapper — tries token auth first, falls back to password"""
     try:
-        from garminconnect import Garmin, GarminConnectAuthenticationError
-    except ImportError:
-        raise HTTPException(500, "garminconnect not installed")
-
-    try:
-        client = Garmin(email=email, password=password, is_cn=False)
-        client.login()
+        client, _ = get_garmin_client_with_tokens(uid, email, password)
         return client
-    except Exception as e:
-        err = str(e).lower()
-        # MFA / 2FA required
-        if "mfa" in err or "2fa" in err or "verification" in err or "factor" in err:
-            raise HTTPException(401, "Garmin требует двухфакторную аутентификацию (MFA). Временно отключи 2FA в настройках Garmin Account, синхронизируй, затем включи обратно.")
-        # SSO redirect issue
-        if "sso" in err or "redirect" in err or "oauth" in err:
-            raise HTTPException(401, "Ошибка Garmin SSO. Проверь email и пароль. Если используешь 2FA — временно отключи его.")
-        # Wrong credentials
-        if "invalid" in err or "unauthorized" in err or "401" in err or "password" in err:
-            raise HTTPException(401, "Неверный email или пароль Garmin.")
-        raise HTTPException(401, f"Ошибка подключения Garmin: {str(e)}")
+    except HTTPException as e:
+        if "MFA_REQUIRED" in str(e.detail):
+            raise HTTPException(401, "Garmin требует код 2FA. Переподключи Garmin в разделе Прогресс → Garmin.")
+        raise
 
 TYPE_MAP = {
     "swimming": "Swimming", "pool_swimming": "Swimming",
@@ -262,13 +301,20 @@ def garmin_status(user=Depends(get_optional_user), db=Depends(get_db)):
 def garmin_connect(creds: GarminCredentials, user=Depends(get_optional_user), db=Depends(get_db)):
     ensure_garmin_table(db)
     uid = get_uid(user)
-    client = get_garmin_client(creds.email, creds.password)
+    try:
+        client, _ = get_garmin_client_with_tokens(uid, creds.email, creds.password, creds.mfa_code)
+    except HTTPException as e:
+        if e.detail == "MFA_REQUIRED":
+            # Tell frontend to ask for MFA code
+            from fastapi.responses import JSONResponse
+            return JSONResponse(status_code=200, content={"mfa_required": True, "message": "Введи код из email/SMS"})
+        raise
     try:
         name = client.get_full_name()
     except:
         name = creds.email
     save_garmin_creds(uid, creds.email, creds.password, db)
-    return {"message": f"Подключён как {name}! Данные сохранены.", "connected": True}
+    return {"message": f"Подключён как {name}! Данные сохранены.", "connected": True, "mfa_required": False}
 
 @router.post("/sync")
 def garmin_sync(creds: Optional[GarminCredentials] = None, days: int = 0,
