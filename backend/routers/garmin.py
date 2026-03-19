@@ -50,16 +50,28 @@ def ensure_garmin_table(db):
     """)
     db.commit()
 
-def get_garmin_client(email: str, password: str):
+def get_garmin_client(email: str, password: str, token_store: dict = None):
     try:
-        from garminconnect import Garmin
-        client = Garmin(email, password)
-        client.login()
-        return client
+        from garminconnect import Garmin, GarminConnectAuthenticationError
     except ImportError:
         raise HTTPException(500, "garminconnect not installed")
+
+    try:
+        client = Garmin(email=email, password=password, is_cn=False)
+        client.login()
+        return client
     except Exception as e:
-        raise HTTPException(401, f"Garmin login failed: {str(e)}")
+        err = str(e).lower()
+        # MFA / 2FA required
+        if "mfa" in err or "2fa" in err or "verification" in err or "factor" in err:
+            raise HTTPException(401, "Garmin требует двухфакторную аутентификацию (MFA). Временно отключи 2FA в настройках Garmin Account, синхронизируй, затем включи обратно.")
+        # SSO redirect issue
+        if "sso" in err or "redirect" in err or "oauth" in err:
+            raise HTTPException(401, "Ошибка Garmin SSO. Проверь email и пароль. Если используешь 2FA — временно отключи его.")
+        # Wrong credentials
+        if "invalid" in err or "unauthorized" in err or "401" in err or "password" in err:
+            raise HTTPException(401, "Неверный email или пароль Garmin.")
+        raise HTTPException(401, f"Ошибка подключения Garmin: {str(e)}")
 
 TYPE_MAP = {
     "swimming": "Swimming", "pool_swimming": "Swimming",

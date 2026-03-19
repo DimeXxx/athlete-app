@@ -1726,14 +1726,43 @@ async function garminConnect(){
   const pass=document.getElementById('g-pass').value;
   if(!email||!pass){toast('Введи email и пароль!',true);return;}
   const btn=document.getElementById('g-connect-btn');
+  const resultEl=document.getElementById('g-result');
   btn.disabled=true;btn.textContent='Подключаемся...';
+  resultEl.innerHTML='<div style="color:var(--muted);font-size:12px">⏳ Подключение к Garmin... (5–15 сек)</div>';
   try{
     const r=await post('/api/garmin/connect',{email,password:pass});
-    toast(r.message);document.getElementById('g-sync-btn').style.display='block';
+    toast(r.message);
+    document.getElementById('g-sync-btn').style.display='block';
     document.getElementById('g-dot').style.background='var(--green)';
     document.getElementById('g-status-text').textContent='Подключён: '+email;
     document.getElementById('g-status-text').style.color='var(--green)';
-  }catch(e){toast('Ошибка: '+e.message,true);}
+    resultEl.innerHTML='<div style="color:var(--green);font-size:12px">✅ Подключено! Теперь нажми Синхронизировать.</div>';
+  }catch(e){
+    const msg=e.message||'';
+    let helpHtml='';
+    if(msg.includes('MFA')||msg.includes('2FA')||msg.includes('двухфакторн')){
+      helpHtml='<div style="background:rgba(255,165,0,0.1);border:1px solid rgba(255,165,0,0.25);border-radius:12px;padding:12px;margin-top:8px;font-size:12px;color:var(--muted2);line-height:1.7">'
+        +'<div style="font-weight:700;color:var(--yellow);margin-bottom:6px">⚠️ Garmin требует 2FA</div>'
+        +'Чтобы подключить SmartFit:<br>'
+        +'1. Зайди на <a href="https://account.garmin.com" target="_blank" style="color:var(--blue)">account.garmin.com</a><br>'
+        +'2. Настройки → Безопасность → отключи двухфакторную аутентификацию<br>'
+        +'3. Синхронизируй SmartFit<br>'
+        +'4. Включи 2FA обратно<br>'
+        +'<span style="color:var(--muted2);font-size:11px">Мы работаем над поддержкой 2FA</span>'
+        +'</div>';
+    } else if(msg.includes('SSO')||msg.includes('redirect')){
+      helpHtml='<div style="background:rgba(255,100,100,0.08);border:1px solid rgba(255,100,100,0.2);border-radius:12px;padding:12px;margin-top:8px;font-size:12px;color:var(--muted2);line-height:1.7">'
+        +'<div style="font-weight:700;color:var(--red);margin-bottom:6px">❌ Ошибка входа Garmin</div>'
+        +'Проверь:<br>'
+        +'• Правильный email и пароль от Garmin Connect<br>'
+        +'• Если включена 2FA — временно отключи её<br>'
+        +'• Попробуй сбросить пароль на garmin.com'
+        +'</div>';
+    } else {
+      helpHtml='<div style="color:var(--red);font-size:12px;margin-top:6px">❌ '+msg+'</div>';
+    }
+    resultEl.innerHTML='<div style="color:var(--red);font-size:13px;font-weight:600">Не удалось подключить Garmin</div>'+helpHtml;
+  }
   finally{btn.disabled=false;btn.textContent='Подключить';}
 }
 
