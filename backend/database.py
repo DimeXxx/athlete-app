@@ -4,7 +4,11 @@ import os
 DB_PATH = os.environ.get("DB_PATH", "athlete.db")
 
 def get_db():
-    conn = sqlite3.connect(DB_PATH)
+    # check_same_thread=False: FastAPI's dependency teardown for sync
+    # generators can run on a different threadpool thread than the one
+    # that opened the connection, which sqlite3 otherwise forbids.
+    # timeout avoids "database is locked" errors under concurrent writes.
+    conn = sqlite3.connect(DB_PATH, check_same_thread=False, timeout=10)
     conn.row_factory = sqlite3.Row
     try:
         yield conn
@@ -109,27 +113,6 @@ def init_db():
             race_date TEXT,
             race_name TEXT,
             updated_at TEXT DEFAULT (datetime('now'))
-        )
-    """)
-
-    c.execute("""
-        CREATE TABLE IF NOT EXISTS pain_log (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_id INTEGER,
-            date TEXT NOT NULL,
-            zone TEXT NOT NULL,
-            pain_level INTEGER NOT NULL,
-            created_at TEXT DEFAULT (datetime('now'))
-        )
-    """)
-
-    c.execute("""
-        CREATE TABLE IF NOT EXISTS water_log (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_id INTEGER,
-            date TEXT NOT NULL,
-            amount_ml INTEGER NOT NULL DEFAULT 0,
-            created_at TEXT DEFAULT (datetime('now'))
         )
     """)
 
