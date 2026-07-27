@@ -61,11 +61,28 @@ def load_garmin_tokens_from_db(uid: int, token_dir: str, db):
     return False
 
 
+import time as _time
+
+# In-memory store for in-progress Garmin MFA logins.
+# Step 1 (garth.sso.login with return_on_mfa=True) triggers Garmin to send
+# the code AND returns a "client_state" (cookies + login params) that MUST
+# be reused in step 2 (garth.sso.resume_login) to submit that same code.
+# Calling client.login() fresh a second time — the old approach — starts a
+# brand new SSO transaction and makes Garmin invalidate/resend a new code,
+# which is why "enter code -> Подключить" kept looping forever.
+# Keyed by uid; entries expire after a few minutes. Lives only in this
+# process's memory (fine for a single Railway replica) — if it's lost
+# (redeploy/restart between the two requests), the user just re-enters
+# email+password to start over.
+_pending_garmin_login: dict = {}
+_MFA_TTL_SECONDS = 300  # give the user 5 min to type the code
+
+
 def get_garmin_client_with_tokens(uid: int, email: str, password: str, mfa_code: str = "", db=None):
-    """Login with garth token support — handles 2FA properly"""
+    """Login with garth token support — proper two-step 2FA handling."""
     try:
         from garminconnect import Garmin
-        import garth
+        from garth import sso as garth_sso
     except ImportError:
         raise HTTPException(500, "garminconnect not installed")
 
@@ -75,42 +92,56 @@ def get_garmin_client_with_tokens(uid: int, email: str, password: str, mfa_code:
     if db:
         load_garmin_tokens_from_db(uid, token_dir, db)
 
-    # Try resuming from saved tokens first
+    # Try resuming from saved tokens first (already-connected accounts)
     try:
         client = Garmin(email=email, password=password)
         client.garth.load(token_dir)
         client.garth.client.auth_token.refresh()
-        # Re-save to DB to keep fresh
         if db:
             save_garmin_tokens_to_db(uid, token_dir, db)
         return client, False
     except Exception:
-        pass  # tokens missing or expired, do fresh login
+        pass  # tokens missing or expired, fall through to login
 
-    # Fresh login — may need MFA
+    # --- Step 2: we have a code AND an in-progress login from step 1 ---
+    pending = _pending_garmin_login.get(uid)
+    if mfa_code and pending and (_time.time() - pending["ts"]) < _MFA_TTL_SECONDS:
+        try:
+            oauth1, oauth2 = garth_sso.resume_login(pending["state"], mfa_code)
+            client = pending["client"]
+            client.garth.oauth1_token = oauth1
+            client.garth.oauth2_token = oauth2
+            client.display_name = client.garth.profile["displayName"]
+            client.full_name = client.garth.profile["fullName"]
+            client.garth.dump(token_dir)
+            if db:
+                save_garmin_tokens_to_db(uid, token_dir, db)
+            _pending_garmin_login.pop(uid, None)
+            return client, False
+        except Exception as e:
+            _pending_garmin_login.pop(uid, None)
+            raise HTTPException(401, f"Неверный код 2FA или он истёк. Подключи заново email + пароль. ({e})")
+
+    # --- Step 1: fresh login attempt, may trigger MFA ---
     try:
-        def _prompt_mfa():
-            # Called by garminconnect/garth ONLY when Garmin actually
-            # requires an MFA code. If we don't have one yet, raise a
-            # clearly-recognizable error so it's caught below and turned
-            # into MFA_REQUIRED, instead of crashing with a raw
-            # "'NoneType' object is not callable" when prompt_mfa is unset.
-            if not mfa_code:
-                raise Exception("MFA_CODE_REQUIRED - no code provided yet")
-            return mfa_code
-
-        client = Garmin(email=email, password=password, prompt_mfa=_prompt_mfa)
-        client.login()
-        # Save tokens to disk and DB
+        client = Garmin(email=email, password=password)
+        result = garth_sso.login(email, password, client=client.garth, return_on_mfa=True)
+        if isinstance(result, tuple) and result and result[0] == "needs_mfa":
+            _pending_garmin_login[uid] = {"state": result[1], "client": client, "ts": _time.time()}
+            raise HTTPException(403, "MFA_REQUIRED")
+        oauth1, oauth2 = result
+        client.garth.oauth1_token = oauth1
+        client.garth.oauth2_token = oauth2
+        client.display_name = client.garth.profile["displayName"]
+        client.full_name = client.garth.profile["fullName"]
         client.garth.dump(token_dir)
         if db:
             save_garmin_tokens_to_db(uid, token_dir, db)
         return client, False
-
+    except HTTPException:
+        raise
     except Exception as e:
         err = str(e).lower()
-        if "mfa" in err or "2fa" in err or "factor" in err or "verification" in err or "code" in err:
-            raise HTTPException(403, "MFA_REQUIRED")
         if "invalid" in err or "unauthorized" in err or "401" in err or "password" in err or "incorrect" in err:
             raise HTTPException(401, "Неверный email или пароль Garmin.")
         raise HTTPException(401, f"Ошибка Garmin: {str(e)}")
@@ -153,10 +184,10 @@ def ensure_garmin_table(db):
     """)
     db.commit()
 
-def get_garmin_client(email: str, password: str, uid: int = 0, db=None):
+def get_garmin_client(email: str, password: str, uid: int = 0, db=None, mfa_code: str = ""):
     """Wrapper — tries token auth first, falls back to password"""
     try:
-        client, _ = get_garmin_client_with_tokens(uid, email, password, db=db)
+        client, _ = get_garmin_client_with_tokens(uid, email, password, mfa_code, db=db)
         return client
     except HTTPException as e:
         if "MFA_REQUIRED" in str(e.detail):
