@@ -89,11 +89,17 @@ def get_garmin_client_with_tokens(uid: int, email: str, password: str, mfa_code:
 
     # Fresh login — may need MFA
     try:
-        if mfa_code:
-            client = Garmin(email=email, password=password, prompt_mfa=lambda: mfa_code)
-        else:
-            client = Garmin(email=email, password=password)
+        def _prompt_mfa():
+            # Called by garminconnect/garth ONLY when Garmin actually
+            # requires an MFA code. If we don't have one yet, raise a
+            # clearly-recognizable error so it's caught below and turned
+            # into MFA_REQUIRED, instead of crashing with a raw
+            # "'NoneType' object is not callable" when prompt_mfa is unset.
+            if not mfa_code:
+                raise Exception("MFA_CODE_REQUIRED - no code provided yet")
+            return mfa_code
 
+        client = Garmin(email=email, password=password, prompt_mfa=_prompt_mfa)
         client.login()
         # Save tokens to disk and DB
         client.garth.dump(token_dir)
